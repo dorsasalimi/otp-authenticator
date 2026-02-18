@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>پنل تست ورود با قفلی</title>
+    <style>
+        body { font-family: Tahoma; background: #f4f4f4; display: flex; justify-content: center; padding: 50px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 300px; }
+        input { width: 100%; padding: 10px; margin: 10px 0; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        button { width: 100%; padding: 10px; background: #2ecc71; color: white; border: none; cursor: pointer; border-radius: 4px; }
+        button:hover { background: #27ae60; }
+        #result { margin-top: 15px; font-size: 14px; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h3>ورود به سیستم</h3>
+        <input type="text" id="phone" placeholder="شماره موبایل (مثلا 0912...)" value="09016892295">
+        <input type="text" id="otp" placeholder="کد ۶ رقمی اپلیکیشن">
+        <button onclick="verifyCode()">تایید و ورود</button>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        async function verifyCode() {
+            const resultDiv = document.getElementById('result');
+            const phone = document.getElementById('phone').value;
+            const token = document.getElementById('otp').value;
+
+            resultDiv.innerHTML = "در حال بررسی...";
+            resultDiv.style.color = "black";
+
+            try {
+                const response = await fetch('http://192.168.100.2:3000/api/authenticate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        apiKey: "testtesttesttesttest", // از پنل ادمین کیستون بردار
+                        apiSecret: "Ghofli_Private_Key_2024", // اگر اضافه کردی، وگرنه فعلا حذفش کن
+                        phoneNumber: phone,
+                        token: token
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.authenticated) {
+                    resultDiv.innerHTML = "✅ " + data.message;
+                    resultDiv.style.color = "green";
+                } else {
+                    resultDiv.innerHTML = "❌ خطا: " + (data.error || "کد اشتباه است");
+                    resultDiv.style.color = "red";
+                }
+            } catch (error) {
+                resultDiv.innerHTML = "❌ خطا در اتصال به سرور قفلی";
+                resultDiv.style.color = "red";
+            }
+        }
+    </script>
+</body>
+</html>

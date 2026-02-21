@@ -1,122 +1,290 @@
 import { KeystoneContext } from "@keystone-6/core/types";
 import { Request, Response } from "express";
-import axios from "axios"; // برای فراخوانی API فراز اس‌ام‌اس
-import { decrypt } from "./crypto";
-const FARAZ_API_KEY = process.env.FARAZ_API_KEY;
-const RECOVERY_PATTERN_CODE = "your-pattern-code"; // کد الگوی ثبت شده در پنل
+import crypto from "crypto";
+
+const verificationTokens = new Map<string, { phoneNumber: string, expires: number }>();
 
 export const recoveryHandler = async (
   req: Request,
   res: Response,
-  context: KeystoneContext,
+  context: KeystoneContext
 ) => {
-  const { phoneNumber, action, code } = req.body;
+  try {
+    const { phoneNumber, action, code, pin, verificationToken } = req.body;
 
-  if (action === "REQUEST_OTP") {
-    // ۱. تولید کد تایید موقت (مثلاً ۵ رقمی)
-    const otpCode = Math.floor(10000 + Math.random() * 90000).toString();
-    const expireTime = new Date(Date.now() + 5 * 60 * 1000); // ۵ دقیقه اعتبار
-    // ۲. ذخیره موقت کد در دیتابیس یا کش (اینجا ساده‌سازی شده)
-    // پیشنهاد: یک جدول برای VerificationCodes بساز یا از Redis استفاده کن
-    const user = await context.db.OtpUser.findOne({ where: { phoneNumber } });
+    if (!phoneNumber) {
+      return res.status(400).json({
+        success: false,
+        error: "شماره موبایل الزامی است",
+      });
+    }
 
-    if (user) {
-      await context.db.OtpUser.updateOne({
+    if (action === "REQUEST_OTP") {
+      console.log("REQUEST_OTP for:", phoneNumber);
+
+      // Check if user exists (but don't create if not)
+      const existingUser = await context.query.OtpUser.findOne({
         where: { phoneNumber },
-        data: {
-          verificationCode: otpCode,
-          verificationExpire: expireTime,
-        },
+        query: `id phoneNumber pinEnabled`,
       });
-    } else {
-      await context.db.OtpUser.createOne({
-        data: {
+
+      const verificationCode = Math.floor(
+        10000 + Math.random() * 90000
+      ).toString();
+
+      const expireTime = new Date(Date.now() + 5 * 60 * 1000);
+
+      if (existingUser) {
+        // Update existing user with verification code
+        await context.query.OtpUser.updateOne({
+          where: { id: existingUser.id },
+          data: {
+            verificationCode,
+            verificationExpire: expireTime.toISOString(),
+          },
+        });
+      } else {
+
+        const tempOTPStore = (global as any).tempOTPStore = (global as any).tempOTPStore || new Map();
+        tempOTPStore.set(phoneNumber, {
+          code: verificationCode,
+          expires: expireTime.getTime(),
+        });
+      }
+
+      console.log("Generated OTP:", verificationCode);
+
+      return res.json({
+        success: true,
+        message: "OTP generated",
+        devCode: verificationCode,
+      });
+    }
+
+
+    if (action === "VERIFY_OTP_ONLY") {
+      console.log("VERIFY_OTP_ONLY for:", phoneNumber);
+
+      const existingUser = await context.query.OtpUser.findOne({
+        where: { phoneNumber },
+        query: `id verificationCode verificationExpire`,
+      });
+
+      let isValid = false;
+
+      if (existingUser) {
+        if (!existingUser.verificationCode || existingUser.verificationCode !== code) {
+          return res.status(400).json({
+            success: false,
+            error: "کد اشتباه است",
+          });
+        }
+
+        if (
+          existingUser.verificationExpire &&
+          new Date(existingUser.verificationExpire) < new Date()
+        ) {
+          return res.status(400).json({
+            success: false,
+            error: "کد منقضی شده است",
+          });
+        }
+
+        isValid = true;
+
+        await context.query.OtpUser.updateOne({
+          where: { id: existingUser.id },
+          data: {
+            isPhoneVerified: true,
+            verificationCode: null,
+            verificationExpire: null,
+          },
+        });
+      } else {
+        const tempOTPStore = (global as any).tempOTPStore || new Map();
+        const tempData = tempOTPStore.get(phoneNumber);
+
+        if (!tempData || tempData.code !== code) {
+          return res.status(400).json({
+            success: false,
+            error: "کد اشتباه است",
+          });
+        }
+
+        if (tempData.expires < Date.now()) {
+          return res.status(400).json({
+            success: false,
+            error: "کد منقضی شده است",
+          });
+        }
+
+        isValid = true;
+        
+        tempOTPStore.delete(phoneNumber);
+      }
+
+      if (isValid) {
+        const token = crypto.randomBytes(32).toString('hex');
+        const expires = Date.now() + 30 * 60 * 1000;
+        
+        verificationTokens.set(token, {
           phoneNumber,
-          verificationCode: otpCode,
-          verificationExpire: expireTime,
+          expires,
+        });
+
+        return res.json({
+          success: true,
+          message: "شماره با موفقیت تایید شد",
+          token: token,
+        });
+      }
+    }
+
+    if (action === "CREATE_USER_WITH_PIN") {
+      console.log("CREATE_USER_WITH_PIN for:", phoneNumber);
+
+      if (!verificationToken) {
+        return res.status(400).json({
+          success: false,
+          error: "توکن تایید الزامی است",
+        });
+      }
+
+      const tokenData = verificationTokens.get(verificationToken);
+      
+      if (!tokenData || tokenData.phoneNumber !== phoneNumber) {
+        return res.status(400).json({
+          success: false,
+          error: "توکن نامعتبر است",
+        });
+      }
+
+      if (tokenData.expires < Date.now()) {
+        verificationTokens.delete(verificationToken);
+        return res.status(400).json({
+          success: false,
+          error: "توکن منقضی شده است",
+        });
+      }
+
+      if (!pin || !/^\d{4,6}$/.test(pin)) {
+        return res.status(400).json({
+          success: false,
+          error: "PIN باید ۴-۶ رقم باشد",
+        });
+      }
+
+      let user = await context.query.OtpUser.findOne({
+        where: { phoneNumber },
+        query: `id`,
+      });
+
+      if (!user) {
+        user = await context.query.OtpUser.createOne({
+          data: {
+            phoneNumber,
+            pin: pin,
+            pinEnabled: true,
+            isPhoneVerified: true,
+            pinLastChangedAt: new Date().toISOString(),
+          },
+          query: `id`,
+        });
+
+        console.log("User created with PIN:", user.id);
+      } else {
+        await context.query.OtpUser.updateOne({
+          where: { id: user.id },
+          data: {
+            pin: pin,
+            pinEnabled: true,
+            pinLastChangedAt: new Date().toISOString(),
+          },
+        });
+
+        console.log("User updated with PIN:", user.id);
+      }
+
+      verificationTokens.delete(verificationToken);
+
+      await context.query.AccessLog.createOne({
+        data: {
+          action: "PIN_SET",
+          ipAddress: req.ip || req.socket.remoteAddress || "",
+          userAgent: req.headers["user-agent"] || "",
         },
       });
-    }
-    // ۳. ارسال پیامک از طریق متد Pattern فراز اس‌ام‌اس
-    try {
-      await axios.post("https://ippanel.com/api/select", {
-        op: "pattern",
-        user: "your_username",
-        pass: "your_password",
-        fromNum: "3000xxxxx",
-        toNum: phoneNumber,
-        patternCode: RECOVERY_PATTERN_CODE,
-        inputData: [{ "verification-code": otpCode }],
+
+      return res.json({
+        success: true,
+        message: "حساب کاربری با موفقیت ایجاد شد",
       });
-      return res.json({ success: true, message: "SMS Sent" });
-    } catch (error) {
-      return res.status(500).json({ error: "Failed to send SMS" });
     }
-  }
 
-  if (action === "VERIFY_AND_SYNC") {
-    const user = await context.query.OtpUser.findOne({
-      where: { phoneNumber },
-      query: `
-      id
-      verificationCode
-      verificationExpire
-      tokens {
-        id
-        encryptedSecret
-        app {
-          name
-          issuer
-          apiKey
-        }
-      }`,
+    if (action === "VERIFY_AND_SYNC") {
+      console.log("VERIFY_AND_SYNC for:", phoneNumber);
+
+      const user = await context.query.OtpUser.findOne({
+        where: { phoneNumber },
+        query: `
+          id
+          verificationCode
+          verificationExpire
+          isPhoneVerified
+        `,
+      });
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          error: "کاربر یافت نشد",
+        });
+      }
+
+      if (!user.verificationCode || user.verificationCode !== code) {
+        return res.status(400).json({
+          success: false,
+          error: "کد اشتباه است",
+        });
+      }
+
+      if (
+        user.verificationExpire &&
+        new Date(user.verificationExpire) < new Date()
+      ) {
+        return res.status(400).json({
+          success: false,
+          error: "کد منقضی شده است",
+        });
+      }
+
+      await context.query.OtpUser.updateOne({
+        where: { id: user.id },
+        data: {
+          isPhoneVerified: true,
+          verificationCode: null,
+          verificationExpire: null,
+        },
+      });
+
+      return res.json({
+        success: true,
+        message: "شماره با موفقیت تایید شد",
+      });
+    }
+
+    return res.status(400).json({
+      success: false,
+      error: "Action نامعتبر است",
     });
 
-    if (!user || user.verificationCode !== code) {
-      return res.status(400).json({ success: false, message: "کد اشتباه است" });
-    }
+  } catch (error: any) {
+    console.error("Recovery Handler Error:", error);
 
-    const now = new Date();
-    if (user.verificationExpire && now > user.verificationExpire) {
-      return res
-        .status(400)
-        .json({ success: false, message: "کد منقضی شده است" });
-    }
-
-    // اگر همه چیز درست بود: پاک کردن کد برای امنیت بیشتر و لاگین کردن
-    await context.db.OtpUser.updateOne({
-      where: { phoneNumber },
-      data: {
-        isPhoneVerified: true,
-        verificationCode: "",
-        verificationExpire: null,
-      },
-    });
-
-    const recoveryData = user.tokens
-      .map((t: any) => {
-        try {
-          // اینجا جادو اتفاق می‌افتد: دکریپت کردن سکرت
-          const rawSecret = decrypt(t.encryptedSecret);
-
-          return {
-            id: t.id,
-            secret: rawSecret, // حالا این سکرت خام (مثل JBSWY3D...) است
-            label: t.app?.name || "Unknown",
-            issuer: t.app?.issuer || "Ghofli",
-            apiKey: t.app?.apiKey,
-          };
-        } catch (err) {
-          console.error(`خطا در دکریپت کردن توکن ${t.id}:`, err);
-          return null;
-        }
-      })
-      .filter(Boolean); // حذف مواردی که با خطا مواجه شدند
-
-    return res.json({
-      success: true,
-      tokens: recoveryData, // برگرداندن توکن‌های بک‌آپ شده
-      message: "خوش آمدید",
+    return res.status(500).json({
+      success: false,
+      error: "خطای داخلی سرور",
+      details: error.message,
     });
   }
 };

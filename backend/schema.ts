@@ -1,15 +1,5 @@
-// Welcome to your schema
-//   Schema driven development is Keystone's modus operandi
-//
-// This file is where we define the lists, fields and hooks for our data.
-// If you want to learn more about how lists are configured, please read
-// - https://keystonejs.com/docs/config/lists
-
 import { list } from "@keystone-6/core";
 import { allowAll } from "@keystone-6/core/access";
-
-// see https://keystonejs.com/docs/fields/overview for the full list of fields
-//   this is a few common fields for an example
 import {
   text,
   relationship,
@@ -19,66 +9,35 @@ import {
   checkbox,
 } from "@keystone-6/core/fields";
 const { authenticator } = require("otplib");
-import crypto from "crypto"; // برای رمزنگاری
-import { randomBytes, scryptSync, timingSafeEqual } from "crypto";
-
-const ENCRYPTION_KEY =
+import crypto from "crypto";
   process.env.MASTER_SECRET || "v-p-n-ir-auth-secret-key-32chars!!";
 const IV_LENGTH = 16;
-// the document field is a more complicated field, so it has it's own package
 import { document } from "@keystone-6/fields-document";
-// if you want to make your own fields, see https://keystonejs.com/docs/guides/custom-fields
-
-// when using Typescript, you can refine your types to a stricter subset by importing
-// the generated types from '.keystone/types'
 import { type Lists } from ".keystone/types";
 export const lists = {
   User: list({
-    // WARNING
-    //   for this starter project, anyone can create, query, update and delete anything
-    //   if you want to prevent random people on the internet from accessing your data,
-    //   you can find out more at https://keystonejs.com/docs/guides/auth-and-access-control
     access: allowAll,
 
-    // this is the fields for our User list
     fields: {
-      // by adding isRequired, we enforce that every User should have a name
-      //   if no name is provided, an error will be displayed
-      name: text({ validation: { isRequired: true } }),
+      name: text({ validation: { isRequired: false } }),
 
       email: text({
-        validation: { isRequired: true },
-        // by adding isIndexed: 'unique', we're saying that no user can have the same
-        // email as another user - this may or may not be a good idea for your project
+        validation: { isRequired: false },
         isIndexed: "unique",
       }),
-
-      password: password({ validation: { isRequired: true } }),
-
-      // we can use this field to see what Posts this User has authored
-      //   more on that in the Post list below
+      password: password({ validation: { isRequired: false } }),
       posts: relationship({ ref: "Post.author", many: true }),
-
       createdAt: timestamp({
-        // this sets the timestamp to Date.now() when the user is first created
         defaultValue: { kind: "now" },
       }),
     },
   }),
 
   Post: list({
-    // WARNING
-    //   for this starter project, anyone can create, query, update and delete anything
-    //   if you want to prevent random people on the internet from accessing your data,
-    //   you can find out more at https://keystonejs.com/docs/guides/auth-and-access-control
     access: allowAll,
-
-    // this is the fields for our Post list
     fields: {
       title: text({ validation: { isRequired: true } }),
 
-      // the document field can be used for making rich editable content
-      //   you can find out more at https://keystonejs.com/docs/guides/document-fields
       content: document({
         formatting: true,
         layouts: [
@@ -92,12 +51,9 @@ export const lists = {
         dividers: true,
       }),
 
-      // with this field, you can set a User as the author for a Post
       author: relationship({
-        // we could have used 'User', but then the relationship would only be 1-way
         ref: "User.posts",
 
-        // this is some customisations for changing how this will look in the AdminUI
         ui: {
           displayMode: "cards",
           cardFields: ["name", "email"],
@@ -106,20 +62,15 @@ export const lists = {
           inlineConnect: true,
         },
 
-        // a Post can only have one author
-        //   this is the default, but we show it here for verbosity
+
         many: false,
       }),
 
-      // with this field, you can add some Tags to Posts
       tags: relationship({
-        // we could have used 'Tag', but then the relationship would only be 1-way
         ref: "Tag.posts",
 
-        // a Post can have many Tags, not just one
         many: true,
 
-        // this is some customisations for changing how this will look in the AdminUI
         ui: {
           displayMode: "cards",
           cardFields: ["name"],
@@ -132,68 +83,53 @@ export const lists = {
     },
   }),
 
-  // this last list is our Tag list, it only has a name field for now
   Tag: list({
-    // WARNING
-    //   for this starter project, anyone can create, query, update and delete anything
-    //   if you want to prevent random people on the internet from accessing your data,
-    //   you can find out more at https://keystonejs.com/docs/guides/auth-and-access-control
+
     access: allowAll,
 
-    // setting this to isHidden for the user interface prevents this list being visible in the Admin UI
     ui: {
       isHidden: true,
     },
 
-    // this is the fields for our Tag list
     fields: {
       name: text(),
-      // this can be helpful to find out all the Posts associated with a Tag
       posts: relationship({ ref: "Post.tags", many: true }),
     },
   }),
-// In your schema.ts
-OtpUser: list({
-  access: allowAll,
-  fields: {
-    phoneNumber: text({
-      isIndexed: "unique",
-      validation: { isRequired: true },
-    }),
-    isPhoneVerified: checkbox({ defaultValue: false }),
-    password: password(),
+  OtpUser: list({
+    access: allowAll,
+    fields: {
+      phoneNumber: text({
+        isIndexed: "unique",
+        validation: { isRequired: true },
+      }),
+      isPhoneVerified: checkbox({ defaultValue: false }),
 
-    // PIN fields - IMPORTANT: Don't set a max length here
-    // The password field will handle the hashing
-    pin: password({
-      validation: {
-        isRequired: false,
-        // Remove the length constraint or set it to the raw PIN length
-        // The validation is for the raw input, not the hashed value
-        length: { min: 4, max: 6 } // This validates the raw PIN input
-      },
-      ui: {
-        description: "4-6 digit PIN for quick login",
-        createView: { fieldMode: "hidden" },
-      },
-    }),
-    pinEnabled: checkbox({
-      defaultValue: false,
-      ui: {
-        description: "Enable PIN login"
-      }
-    }),
-    pinLastChangedAt: timestamp(),
+      pin: password({
+        validation: {
+          isRequired: true,
+          length: { min: 4, max: 6 },
+        },
+        ui: {
+          description: "4-6 digit PIN for quick login",
+          createView: { fieldMode: "hidden" },
+        },
+      }),
+      pinEnabled: checkbox({
+        defaultValue: false,
+        ui: {
+          description: "Enable PIN login",
+        },
+      }),
+      pinLastChangedAt: timestamp(),
+      tokens: relationship({ ref: "OTPToken.user", many: true }),
+      verificationCode: text({ db: { isNullable: true } }),
+      verificationExpire: timestamp({ db: { isNullable: true } }),
+      createdAt: timestamp({ defaultValue: { kind: "now" } }),
+    },
+    ui: { labelField: "phoneNumber" },
+  }),
 
-    tokens: relationship({ ref: "OTPToken.user", many: true }),
-    verificationCode: text(),
-    verificationExpire: timestamp(),
-    createdAt: timestamp({ defaultValue: { kind: "now" } }),
-  },
-  ui: { labelField: "phoneNumber" },
-}),
-
-  // ۲. پلتفرم‌های متصل (دیوار، دیجی‌کالا و ...)
   App: list({
     access: allowAll,
     fields: {
@@ -205,24 +141,21 @@ OtpUser: list({
     },
   }),
 
-  // ۳. توکن‌های امنیتی (کلیدهای اختصاصی هر سرویس برای هر کاربر)
   OTPToken: list({
     access: allowAll,
     fields: {
       user: relationship({ ref: "OtpUser.tokens" }),
       app: relationship({ ref: "App.tokens" }),
       encryptedSecret: text({ ui: { itemView: { fieldMode: "read" } } }),
-      isVerified: checkbox({ defaultValue: false }), // تایید در اولین اتصال
-      lastUsedAt: timestamp(), // برای ردیابی آخرین فعالیت
+      isVerified: checkbox({ defaultValue: false }),
+      lastUsedAt: timestamp(),
       createdAt: timestamp({ defaultValue: { kind: "now" } }),
     },
     hooks: {
       resolveInput: async ({ operation, resolvedData }) => {
-        // اگر در حال ایجاد رکورد هستیم و سکرت خام فرستاده شده است
         if (operation === "create" && resolvedData.encryptedSecret) {
           const rawSecret = resolvedData.encryptedSecret;
 
-          // عملیات رمزنگاری
           const IV_LENGTH = 16;
           const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
           console.log(ENCRYPTION_KEY);
@@ -241,7 +174,6 @@ OtpUser: list({
           let encrypted = cipher.update(rawSecret);
           encrypted = Buffer.concat([encrypted, cipher.final()]);
 
-          // ذخیره نتیجه رمزنگاری شده به جای متن خام
           resolvedData.encryptedSecret =
             iv.toString("hex") + ":" + encrypted.toString("hex");
         }
@@ -250,35 +182,30 @@ OtpUser: list({
     },
   }),
   OTPTokenHistory: list({
-    // محدودیت دسترسی: فقط ادمین می‌تواند سوابق را ببیند، اما سیستم (سرور) می‌تواند بسازد
     access: {
       operation: {
         query: ({ session }) => !!session?.data.isAdmin,
         create: () => true,
-        update: () => false, // سوابق تاریخی غیرقابل تغییر هستند
+        update: () => false,
         delete: ({ session }) => !!session?.data.isAdmin,
       },
     },
     fields: {
-      // ارتباط با کاربر حذف کننده
       user: relationship({
         ref: "OtpUser",
         many: false,
         ui: { displayMode: "cards", cardFields: ["phoneNumber"] },
       }),
 
-      // ارتباط با اپلیکیشن (در صورت وجود)
       app: relationship({
         ref: "App",
         many: false,
       }),
 
-      // ذخیره نام اپلیکیشن به صورت متن ثابت (برای امنیت داده در صورت حذف فیزیکی اپلیکیشن)
       appNameAtDeletion: text({
         label: "نام اپلیکیشن در زمان حذف",
       }),
 
-      // فیلدهای زمانی برای گزارش‌گیری دقیق
       createdAtOriginal: timestamp({
         label: "زمان ساخت اولیه توکن",
       }),
@@ -303,80 +230,33 @@ OtpUser: list({
       },
     },
   }),
-  // ۴. لاگ‌های امنیتی (حیاتی برای مانیتورینگ و تشخیص هک)
-AccessLog: list({
-  access: allowAll,
-  fields: {
-    timestamp: timestamp({ defaultValue: { kind: "now" } }),
-    token: relationship({ ref: "OTPToken" }),
-    action: select({
-      options: [
-        { label: "Verify Success", value: "VERIFY_SUCCESS" },
-        { label: "Verify Failed", value: "VERIFY_FAILED" },
-        { label: "Recovery Initiated", value: "RECOVERY_INITIATED" },
-        { label: "Token Deleted", value: "TOKEN_DELETED" },
-        { label: "PIN Set", value: "PIN_SET" },
-        { label: "PIN Changed", value: "PIN_CHANGED" },
-        { label: "PIN Verify Success", value: "PIN_VERIFY_SUCCESS" },
-        { label: "PIN Verify Failed", value: "PIN_VERIFY_FAILED" },
-        { label: "PIN Disabled", value: "PIN_DISABLED" },
-        { label: "Biometric Registered", value: "BIOMETRIC_REGISTERED" },
-        { label: "Biometric Verify Success", value: "BIOMETRIC_VERIFY_SUCCESS" },
-        { label: "Biometric Verify Failed", value: "BIOMETRIC_VERIFY_FAILED" },
-        { label: "Biometric Disabled", value: "BIOMETRIC_DISABLED" },
-        { label: "Biometric Disabled All", value: "BIOMETRIC_DISABLED_ALL" },
-      ],
-      ui: { displayMode: "segmented-control" },
-    }),
-    ipAddress: text(),
-    userAgent: text(),
-    metadata: text({ defaultValue: "" }),
-  },
-  ui: {
-    labelField: "action",
-    listView: { initialColumns: ["timestamp", "action", "token"] },
-  },
-}),
-BiometricCredential: list({
-  access: allowAll,
-  fields: {
-    user: relationship({
-      ref: 'OtpUser',
-      many: false,
-    }),
-    token: text({
-      validation: { isRequired: true },
-      ui: {
-        itemView: { fieldMode: 'read' },
-        createView: { fieldMode: 'hidden' },
-      },
-    }),
-    deviceId: text({
-      validation: { isRequired: true },
-      isIndexed: true,
-    }),
-    isActive: checkbox({ defaultValue: true }),
-    lastUsedAt: timestamp(),
-    createdAt: timestamp({ defaultValue: { kind: "now" } }),
-    deviceName: text({
-      ui: {
-        description: "Optional: Friendly name for the device"
-      }
-    }),
-    deviceType: select({
-      options: [
-        { label: "iOS", value: "ios" },
-        { label: "Android", value: "android" },
-        { label: "Unknown", value: "unknown" },
-      ],
-      defaultValue: "unknown",
-    }),
-  },
-  ui: {
-    labelField: "deviceId",
-    listView: {
-      initialColumns: ["user", "deviceId", "lastUsedAt", "isActive"],
+  AccessLog: list({
+    access: allowAll,
+    fields: {
+      timestamp: timestamp({ defaultValue: { kind: "now" } }),
+      token: relationship({ ref: "OTPToken" }),
+      action: select({
+        options: [
+          { label: "Verify Success", value: "VERIFY_SUCCESS" },
+          { label: "Verify Failed", value: "VERIFY_FAILED" },
+          { label: "Recovery Initiated", value: "RECOVERY_INITIATED" },
+          { label: "Token Deleted", value: "TOKEN_DELETED" },
+          { label: "PIN Set", value: "PIN_SET" },
+          { label: "PIN Changed", value: "PIN_CHANGED" },
+          { label: "PIN Verify Success", value: "PIN_VERIFY_SUCCESS" },
+          { label: "PIN Verify Failed", value: "PIN_VERIFY_FAILED" },
+          { label: "PIN Disabled", value: "PIN_DISABLED" },
+          { label: "PIN Disabled", value: "PIN_SETUP_SKIPPED" },
+        ],
+        ui: { displayMode: "segmented-control" },
+      }),
+      ipAddress: text(),
+      userAgent: text(),
+      metadata: text({ defaultValue: "" }),
     },
-  },
-}),
+    ui: {
+      labelField: "action",
+      listView: { initialColumns: ["timestamp", "action", "token"] },
+    },
+  }),
 } satisfies Lists;

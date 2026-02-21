@@ -29,6 +29,7 @@ input UserWhereInput {
   id: IDFilter
   name: StringFilter
   email: StringFilter
+  password: PasswordFilter
   posts: PostManyRelationFilter
   createdAt: DateTimeNullableFilter
 }
@@ -76,6 +77,10 @@ input NestedStringFilter {
   startsWith: String
   endsWith: String
   not: NestedStringFilter
+}
+
+input PasswordFilter {
+  isSet: Boolean!
 }
 
 input PostManyRelationFilter {
@@ -264,7 +269,6 @@ type OtpUser {
   id: ID!
   phoneNumber: String
   isPhoneVerified: Boolean
-  password: PasswordState
   pin: PasswordState
   pinEnabled: Boolean
   pinLastChangedAt: DateTime
@@ -287,12 +291,10 @@ input OtpUserWhereInput {
   id: IDFilter
   phoneNumber: StringFilter
   isPhoneVerified: BooleanFilter
-  password: PasswordFilter
-  pin: PasswordFilter
   pinEnabled: BooleanFilter
   pinLastChangedAt: DateTimeNullableFilter
   tokens: OTPTokenManyRelationFilter
-  verificationCode: StringFilter
+  verificationCode: StringNullableFilter
   verificationExpire: DateTimeNullableFilter
   createdAt: DateTimeNullableFilter
 }
@@ -302,14 +304,25 @@ input BooleanFilter {
   not: BooleanFilter
 }
 
-input PasswordFilter {
-  isSet: Boolean!
-}
-
 input OTPTokenManyRelationFilter {
   every: OTPTokenWhereInput
   some: OTPTokenWhereInput
   none: OTPTokenWhereInput
+}
+
+input StringNullableFilter {
+  equals: String
+  in: [String!]
+  notIn: [String!]
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  contains: String
+  startsWith: String
+  endsWith: String
+  mode: QueryMode
+  not: StringNullableFilter
 }
 
 input OtpUserOrderByInput {
@@ -326,7 +339,6 @@ input OtpUserOrderByInput {
 input OtpUserUpdateInput {
   phoneNumber: String
   isPhoneVerified: Boolean
-  password: String
   pin: String
   pinEnabled: Boolean
   pinLastChangedAt: DateTime
@@ -351,7 +363,6 @@ input OtpUserUpdateArgs {
 input OtpUserCreateInput {
   phoneNumber: String
   isPhoneVerified: Boolean
-  password: String
   pin: String
   pinEnabled: Boolean
   pinLastChangedAt: DateTime
@@ -588,21 +599,6 @@ input AccessLogWhereInput {
   metadata: StringFilter
 }
 
-input StringNullableFilter {
-  equals: String
-  in: [String!]
-  notIn: [String!]
-  lt: String
-  lte: String
-  gt: String
-  gte: String
-  contains: String
-  startsWith: String
-  endsWith: String
-  mode: QueryMode
-  not: StringNullableFilter
-}
-
 input AccessLogOrderByInput {
   id: OrderDirection
   timestamp: OrderDirection
@@ -644,75 +640,6 @@ input AccessLogCreateInput {
 input OTPTokenRelateToOneForCreateInput {
   create: OTPTokenCreateInput
   connect: OTPTokenWhereUniqueInput
-}
-
-type BiometricCredential {
-  id: ID!
-  user: OtpUser
-  token: String
-  deviceId: String
-  isActive: Boolean
-  lastUsedAt: DateTime
-  createdAt: DateTime
-  deviceName: String
-  deviceType: String
-}
-
-input BiometricCredentialWhereUniqueInput {
-  id: ID
-}
-
-input BiometricCredentialWhereInput {
-  AND: [BiometricCredentialWhereInput!]
-  OR: [BiometricCredentialWhereInput!]
-  NOT: [BiometricCredentialWhereInput!]
-  id: IDFilter
-  user: OtpUserWhereInput
-  token: StringFilter
-  deviceId: StringFilter
-  isActive: BooleanFilter
-  lastUsedAt: DateTimeNullableFilter
-  createdAt: DateTimeNullableFilter
-  deviceName: StringFilter
-  deviceType: StringNullableFilter
-}
-
-input BiometricCredentialOrderByInput {
-  id: OrderDirection
-  token: OrderDirection
-  deviceId: OrderDirection
-  isActive: OrderDirection
-  lastUsedAt: OrderDirection
-  createdAt: OrderDirection
-  deviceName: OrderDirection
-  deviceType: OrderDirection
-}
-
-input BiometricCredentialUpdateInput {
-  user: OtpUserRelateToOneForUpdateInput
-  token: String
-  deviceId: String
-  isActive: Boolean
-  lastUsedAt: DateTime
-  createdAt: DateTime
-  deviceName: String
-  deviceType: String
-}
-
-input BiometricCredentialUpdateArgs {
-  where: BiometricCredentialWhereUniqueInput!
-  data: BiometricCredentialUpdateInput!
-}
-
-input BiometricCredentialCreateInput {
-  user: OtpUserRelateToOneForCreateInput
-  token: String
-  deviceId: String
-  isActive: Boolean
-  lastUsedAt: DateTime
-  createdAt: DateTime
-  deviceName: String
-  deviceType: String
 }
 
 """
@@ -769,12 +696,6 @@ type Mutation {
   updateAccessLogs(data: [AccessLogUpdateArgs!]!): [AccessLog]
   deleteAccessLog(where: AccessLogWhereUniqueInput!): AccessLog
   deleteAccessLogs(where: [AccessLogWhereUniqueInput!]!): [AccessLog]
-  createBiometricCredential(data: BiometricCredentialCreateInput!): BiometricCredential
-  createBiometricCredentials(data: [BiometricCredentialCreateInput!]!): [BiometricCredential]
-  updateBiometricCredential(where: BiometricCredentialWhereUniqueInput!, data: BiometricCredentialUpdateInput!): BiometricCredential
-  updateBiometricCredentials(data: [BiometricCredentialUpdateArgs!]!): [BiometricCredential]
-  deleteBiometricCredential(where: BiometricCredentialWhereUniqueInput!): BiometricCredential
-  deleteBiometricCredentials(where: [BiometricCredentialWhereUniqueInput!]!): [BiometricCredential]
   endSession: Boolean!
   authenticateUserWithPassword(email: String!, password: String!): UserAuthenticationWithPasswordResult
   createInitialUser(data: CreateInitialUserInput!): UserAuthenticationWithPasswordSuccess!
@@ -822,9 +743,6 @@ type Query {
   accessLog(where: AccessLogWhereUniqueInput!): AccessLog
   accessLogs(where: AccessLogWhereInput! = {}, orderBy: [AccessLogOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: AccessLogWhereUniqueInput): [AccessLog!]
   accessLogsCount(where: AccessLogWhereInput! = {}): Int
-  biometricCredential(where: BiometricCredentialWhereUniqueInput!): BiometricCredential
-  biometricCredentials(where: BiometricCredentialWhereInput! = {}, orderBy: [BiometricCredentialOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: BiometricCredentialWhereUniqueInput): [BiometricCredential!]
-  biometricCredentialsCount(where: BiometricCredentialWhereInput! = {}): Int
   keystone: KeystoneMeta!
   authenticatedItem: AuthenticatedItem
 }

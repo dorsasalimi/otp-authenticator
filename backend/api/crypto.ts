@@ -1,9 +1,7 @@
 import crypto from 'crypto';
 
-// ۱. کلید حتما باید ۳۲ کاراکتر باشد
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || '12345678901234567890123456789012'; 
 
-// ۲. برای AES-CBC مقدار IV همیشه ۱۶ است
 const IV_LENGTH = 16; 
 
 export function decrypt(text: string) {
@@ -14,7 +12,6 @@ export function decrypt(text: string) {
     const iv = Buffer.from(textParts.shift()!, 'hex');
     const encryptedText = Buffer.from(textParts.join(':'), 'hex');
 
-    // بررسی طول کلید قبل از شروع برای جلوگیری از کرش سرور
     const keyBuffer = Buffer.from(ENCRYPTION_KEY);
     if (keyBuffer.length !== 32) {
       throw new Error(`طول کلید باید ۳۲ بایت باشد، اما الان ${keyBuffer.length} بایت است.`);

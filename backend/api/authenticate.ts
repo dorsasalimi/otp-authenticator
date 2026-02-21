@@ -1,3 +1,4 @@
+// authenticate.ts
 import { KeystoneContext } from "@keystone-6/core/types";
 import { Request, Response } from "express";
 import speakeasy from "speakeasy";
@@ -11,7 +12,6 @@ export const authenticateHandler = async (
   try {
     const { apiKey, phoneNumber, token } = req.body;
     console.log(token);
-    // ۱. بررسی اعتبار سایت درخواست‌دهنده
     const application = await context.query.App.findOne({
       where: { apiKey },
       query: "id name",
@@ -20,7 +20,6 @@ export const authenticateHandler = async (
     if (!application)
       return res.status(401).json({ error: "API Key نامعتبر است" });
 
-    // ۲. پیدا کردن توکنِ تایید شده کاربر برای این اپلیکیشن
     const userTokens = await context.query.OTPToken.findMany({
       where: {
         user: { phoneNumber: { equals: phoneNumber } },
@@ -43,7 +42,6 @@ export const authenticateHandler = async (
       encoding: "base32",
     });
    
-    // ۳. تایید کد ۶ رقمی
 console.log(expectedServerCode);
     const isValid = speakeasy.totp.verify({
       secret: decryptedSecret,
@@ -52,7 +50,6 @@ console.log(expectedServerCode);
       window: 1,
     });
  console.log(decryptedSecret);
-    // ۴. ثبت لاگ ورود
     await context.query.AccessLog.createOne({
       data: {
         token: { connect: { id: targetToken.id } },
@@ -61,7 +58,6 @@ console.log(expectedServerCode);
       },
     });
     if (!isValid) {
-      // یک تاخیر مصنوعی کوچک (مثلاً ۲۰۰ میلی‌ثانیه) برای سخت‌تر کردن کار ربات‌ها
       await new Promise((resolve) => setTimeout(resolve, 2000));
       return res
         .status(400)

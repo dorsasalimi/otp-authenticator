@@ -1,6 +1,7 @@
+// verify.ts
 import { KeystoneContext } from "@keystone-6/core/types";
 import { Request, Response } from "express";
-import speakeasy from "speakeasy"; // جایگزین otplib برای پایداری بیشتر
+import speakeasy from "speakeasy";
 import { decrypt } from "./crypto";
 import * as crypto from "crypto";
 const APP_SECRET = process.env.APP_SECRET || "Ghofli_Private_Key_2024";
@@ -15,7 +16,6 @@ export const verifySignature = (req: Request) => {
   if (!signature || !timestamp) {
     return false;
   }
-  // بازسازی امضا برای مقایسه
   const expectedSignature = crypto
     .createHmac('sha256', APP_SECRET)
     .update(timestamp + phoneNumber)
@@ -33,19 +33,17 @@ export const verifyOTPHandler = async (
   try {
     console.log("AAAAAAA");
     const { phoneNumber, secret: rawSecretFromMobile, token } = req.body;
-    // ۱. پیدا کردن اپلیکیشن بر اساس API Key
     console.log(rawSecretFromMobile)
     if (rawSecretFromMobile) {
-      const isSigValid = verifySignature(req); // نتیجه را در یک متغیر بریز
+      const isSigValid = verifySignature(req);
       if (!isSigValid) {
         console.log("Blocking Request: Invalid Signature");
         return res.status(403).json({ error: "امضای دیجیتال نامعتبر است" });
       }
     }
-    // ۲. پیدا کردن توکن کاربر برای این اپلیکیشن
     const userTokens = await context.query.OTPToken.findMany({
       where: {
-        user: { phoneNumber: { equals: phoneNumber } }, // جستجو بر اساس شماره موبایل
+        user: { phoneNumber: { equals: phoneNumber } },
       },
       query: "id encryptedSecret isVerified",
       orderBy: { createdAt: "desc" },
@@ -57,7 +55,6 @@ export const verifyOTPHandler = async (
     const targetToken = userTokens[0];
     const decryptedSecret = decrypt(targetToken.encryptedSecret);
 
-    // ۳. سناریوی اول: تاییدِ اولین اسکن توسط موبایل
     if (rawSecretFromMobile) {
       if (rawSecretFromMobile === decryptedSecret) {
         await context.query.OTPToken.updateOne({
@@ -69,16 +66,14 @@ export const verifyOTPHandler = async (
       return res.status(400).json({ error: "سکرت نامعتبر است" });
     }
 
-    // ۴. سناریوی دوم: تاییدِ کد ۶ رقمی (Login)
     if (token) {
       const isValid = speakeasy.totp.verify({
         secret: decryptedSecret,
         encoding: "base32",
         token: token,
-        window: 1, // اجازه دادن به کد ۳۰ ثانیه قبل و بعد برای رفع اختلاف زمانی جزئی
+        window: 1,
       });
 
-      // ۵. ثبت لاگ دسترسی
       await context.query.AccessLog.createOne({
         data: {
           token: { connect: { id: targetToken.id } },

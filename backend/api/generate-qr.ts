@@ -1,3 +1,4 @@
+// generate-qr.ts
 import { Request, Response } from 'express';
 import { Context } from '.keystone/types';
 import QRCode from 'qrcode';
@@ -11,15 +12,13 @@ export default async function generateQR(req: Request, res: Response, context: C
     if (!phoneNumber || !appId) return res.status(400).send('اطلاعات ناقص');
 
     const user = await context.query.OtpUser.findOne({ where: { phoneNumber }, query: 'id' });
-    const app = await context.query.App.findOne({ where: { id: appId }, query: 'id issuer name apiKey' }); // apiKey را هم بگیریم
+    const app = await context.query.App.findOne({ where: { id: appId }, query: 'id issuer name apiKey' }); 
 
     if (!user || !app) return res.status(404).send('کاربر یا اپلیکیشن یافت نشد');
 
-    // ۱. تولید سکرت خام و استاندارد
     const secret = speakeasy.generateSecret({ length: 20 });
-    const rawSecret = secret.base32.replace(/\s+/g, "").toUpperCase(); // اطمینان از فرمت استاندارد
+    const rawSecret = secret.base32.replace(/\s+/g, "").toUpperCase();
 
-    // ۲. ذخیره در دیتابیس
     await context.query.OTPToken.createOne({
       data: {
         user: { connect: { id: user.id } },
@@ -29,12 +28,9 @@ export default async function generateQR(req: Request, res: Response, context: C
       },
     });
 
-    // ۳. ساخت دستی URL برای QR کد (بسیار مهم)
-    // اضافه کردن apiKey به URL برای اینکه اسکنر گوشی بفهمد مربوط به کدام اپ است
     const label = encodeURIComponent(`قفلی:${app.name} (${phoneNumber})`);
     const issuer = encodeURIComponent(app.issuer || 'Ghofli');
     
-    // ساخت رشته استاندارد otpauth با پارامترهای اختصاصی ما
     const otpauthUrl = `otpauth://totp/${label}?secret=${rawSecret}&issuer=${issuer}&apiKey=${app.apiKey}`;
 
     // ۴. تولید تصویر QR

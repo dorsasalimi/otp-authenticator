@@ -15,7 +15,7 @@ model User {
   id        String    @id @default(uuid()) @postgresql.Uuid
   name      String    @default("")
   email     String    @unique @default("")
-  password  String
+  password  String?
   posts     Post[]    @relation("Post_author")
   createdAt DateTime? @default(now())
 }
@@ -38,19 +38,17 @@ model Tag {
 }
 
 model OtpUser {
-  id                            String                @id @default(uuid()) @postgresql.Uuid
-  phoneNumber                   String                @unique @default("")
-  isPhoneVerified               Boolean               @default(false)
-  password                      String?
-  pin                           String?
-  pinEnabled                    Boolean               @default(false)
-  pinLastChangedAt              DateTime?
-  tokens                        OTPToken[]            @relation("OTPToken_user")
-  verificationCode              String                @default("")
-  verificationExpire            DateTime?
-  createdAt                     DateTime?             @default(now())
-  from_OTPTokenHistory_user     OTPTokenHistory[]     @relation("OTPTokenHistory_user")
-  from_BiometricCredential_user BiometricCredential[] @relation("BiometricCredential_user")
+  id                        String            @id @default(uuid()) @postgresql.Uuid
+  phoneNumber               String            @unique @default("")
+  isPhoneVerified           Boolean           @default(false)
+  pin                       String
+  pinEnabled                Boolean           @default(false)
+  pinLastChangedAt          DateTime?
+  tokens                    OTPToken[]        @relation("OTPToken_user")
+  verificationCode          String?
+  verificationExpire        DateTime?
+  createdAt                 DateTime?         @default(now())
+  from_OTPTokenHistory_user OTPTokenHistory[] @relation("OTPTokenHistory_user")
 }
 
 model App {
@@ -105,20 +103,4 @@ model AccessLog {
   metadata  String    @default("")
 
   @@index([tokenId])
-}
-
-model BiometricCredential {
-  id         String    @id @default(uuid()) @postgresql.Uuid
-  user       OtpUser?  @relation("BiometricCredential_user", fields: [userId], references: [id])
-  userId     String?   @map("user") @postgresql.Uuid
-  token      String    @default("")
-  deviceId   String    @default("")
-  isActive   Boolean   @default(true)
-  lastUsedAt DateTime?
-  createdAt  DateTime? @default(now())
-  deviceName String    @default("")
-  deviceType String?   @default("unknown")
-
-  @@index([userId])
-  @@index([deviceId])
 }

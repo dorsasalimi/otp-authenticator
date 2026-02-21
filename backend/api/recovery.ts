@@ -22,7 +22,6 @@ export const recoveryHandler = async (
     if (action === "REQUEST_OTP") {
       console.log("REQUEST_OTP for:", phoneNumber);
 
-      // Check if user exists (but don't create if not)
       const existingUser = await context.query.OtpUser.findOne({
         where: { phoneNumber },
         query: `id phoneNumber pinEnabled`,
@@ -35,7 +34,6 @@ export const recoveryHandler = async (
       const expireTime = new Date(Date.now() + 5 * 60 * 1000);
 
       if (existingUser) {
-        // Update existing user with verification code
         await context.query.OtpUser.updateOne({
           where: { id: existingUser.id },
           data: {

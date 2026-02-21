@@ -1,4 +1,3 @@
-// remove.ts
 import { KeystoneContext } from "@keystone-6/core/types";
 import { Request, Response } from "express";
 import { verifySignature } from "./verify";

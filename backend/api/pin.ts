@@ -26,10 +26,9 @@ const checkRateLimit = (identifier: string): boolean => {
   const record = failedAttempts.get(identifier);
   if (record) {
     if (record.lockUntil && record.lockUntil > Date.now()) {
-      return false; // Still locked
+      return false;
     }
     if (record.lockUntil && record.lockUntil <= Date.now()) {
-      // Lock expired, reset
       failedAttempts.delete(identifier);
     }
   }
@@ -71,7 +70,6 @@ export const pinHandler = async (
       return res.status(400).json({ error: "Phone number is required" });
     }
 
-    // Finding user
     const users = await context.query.OtpUser.findMany({
       where: {
         phoneNumber: { equals: phoneNumber },

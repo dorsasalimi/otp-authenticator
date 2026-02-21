@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
   View,
-  Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
@@ -14,10 +13,7 @@ import {
 import { useRouter } from "expo-router";
 import axios from "axios";
 import * as SecureStore from "expo-secure-store";
-
-// Force layout for farsi
-I18nManager.allowRTL(true);
-I18nManager.forceRTL(true);
+import CustomText from "@/components/CustomText"; 
 
 const API_URL = "http://192.168.100.59:3000/api";
 
@@ -127,49 +123,49 @@ export default function LoginScreen() {
     }
   };
 
-  const verifyOTP = async () => {
-    const englishCode = code.map((digit) => toEnglishNumbers(digit)).join("");
+const verifyOTP = async () => {
+  const englishCode = code.map((digit) => toEnglishNumbers(digit)).join("");
 
-    if (englishCode.length < 5) {
-      Alert.alert("خطا", "لطفاً کد تایید را کامل وارد کنید.");
+  if (englishCode.length < 5) {
+    Alert.alert("خطا", "لطفاً کد تایید را کامل وارد کنید.");
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    const response = await axios.post(`${API_URL}/recovery`, {
+      phoneNumber: englishPhone,
+      code: englishCode,
+      action: "VERIFY_OTP_ONLY",
+    });
+
+    if (!response.data.success) {
+      Alert.alert("خطا", "کد وارد شده اشتباه است.");
       return;
     }
 
-    setLoading(true);
+    setVerificationToken(response.data.token);
 
-    try {
-      const response = await axios.post(`${API_URL}/recovery`, {
-        phoneNumber: englishPhone,
-        code: englishCode,
-        action: "VERIFY_OTP_ONLY",
-      });
+    const userStatus = await axios.get(
+      `${API_URL}/pin/status/${englishPhone}`,
+    );
 
-      if (!response.data.success) {
-        Alert.alert("خطا", "کد وارد شده اشتباه است.");
-        return;
-      }
+    const userExists = userStatus.data?.data?.userExists;
+    const hasPin = userStatus.data?.data?.pinEnabled;
 
-      setVerificationToken(response.data.token);
-      
-      const userStatus = await axios.get(
-        `${API_URL}/pin/status/${englishPhone}`,
-      );
-
-      const userExists = userStatus.data?.data?.userExists;
-      const hasPin = userStatus.data?.data?.pinEnabled;
-
-      if (userExists && hasPin) {
-        setStep(3);
-        setShowPinLogin(true);
-      } else {
-        setStep(4);
-      }
-    } catch (error) {
-      Alert.alert("خطا", "کد وارد شده اشتباه است.");
-    } finally {
-      setLoading(false);
+    if (userExists) {
+      await SecureStore.setItemAsync("user_phone", englishPhone);
+      router.replace("/(tabs)");
+    } else {
+      setStep(4);
     }
-  };
+  } catch (error) {
+    Alert.alert("خطا", "کد وارد شده اشتباه است.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handlePINLogin = async () => {
     const englishPin = pin.map((digit) => toEnglishNumbers(digit)).join("");
@@ -204,7 +200,7 @@ export default function LoginScreen() {
     const englishPin = setupPin
       .map((digit) => toEnglishNumbers(digit))
       .join("");
-    
+
     if (pinSetupStep === "create") {
       if (englishPin.length === 4) {
         setTempPin(englishPin);
@@ -295,15 +291,19 @@ export default function LoginScreen() {
 
   const renderPinSetup = () => (
     <View style={styles.container}>
-      <Text style={styles.title}>تنظیم PIN ورود سریع</Text>
-      <Text style={styles.subtitle}>
+      <CustomText style={styles.title}>تنظیم PIN ورود سریع</CustomText>
+      <CustomText style={styles.subtitle}>
         {pinSetupStep === "create"
           ? "یک PIN ۴ رقمی انتخاب کنید"
           : "PIN را دوباره وارد کنید"}
-      </Text>
-      
+      </CustomText>
+
       <View style={styles.codeContainer}>
-        <View style={styles.codeInputContainer}>
+        <View
+          style={styles.pinInputContainer}
+          onLayout={() => I18nManager.forceRTL(false)}
+        >
+          {" "}
           {setupPin.map((digit, index) => (
             <TextInput
               key={index}
@@ -327,13 +327,7 @@ export default function LoginScreen() {
                 )
               }
               onKeyPress={(e) =>
-                handleKeyPress(
-                  e,
-                  index,
-                  setupPin,
-                  setSetupPin,
-                  inputRefs,
-                )
+                handleKeyPress(e, index, setupPin, setSetupPin, inputRefs)
               }
               secureTextEntry={true}
               textAlign="center"
@@ -347,7 +341,7 @@ export default function LoginScreen() {
       <TouchableOpacity
         style={[
           styles.mainButton,
-          setupPin.join("").length < 4 && styles.buttonDisabled
+          setupPin.join("").length < 4 && styles.buttonDisabled,
         ]}
         onPress={handlePinSetup}
         disabled={setupPin.join("").length < 4 || loading}
@@ -355,9 +349,9 @@ export default function LoginScreen() {
         {loading ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.buttonText}>
+          <CustomText style={styles.buttonText}>
             {pinSetupStep === "create" ? "ادامه" : "تایید"}
-          </Text>
+          </CustomText>
         )}
       </TouchableOpacity>
 
@@ -371,7 +365,9 @@ export default function LoginScreen() {
           }}
           disabled={loading}
         >
-          <Text style={styles.backButtonText}>بازگشت به مرحله قبل</Text>
+          <CustomText style={styles.backButtonText}>
+            بازگشت به مرحله قبل
+          </CustomText>
         </TouchableOpacity>
       )}
     </View>
@@ -384,38 +380,54 @@ export default function LoginScreen() {
           renderPinSetup()
         ) : (
           <View style={styles.container}>
-            <Text style={styles.title}>
-              {step === 1 ? "ورود" : step === 2 ? "ورود با پیامک" : "ورود با PIN"}
-            </Text>
+            <CustomText style={styles.title}>
+              {step === 1
+                ? "ورود"
+                : step === 2
+                  ? "ورود با پیامک"
+                  : "پین را وارد کنید"}
+            </CustomText>
 
             {step === 2 && (
-              <Text style={styles.subtitle}>
-                کد تایید ۵ رقمی برای شما ارسال شد
-              </Text>
+              <>
+                <CustomText style={styles.subtitle}>
+                  کدی که برایتان ارسال کردیم را وارد کنید
+                </CustomText>
+                <View style={styles.numberBox}>
+                  <CustomText style={styles.numberText}>
+                    {englishPhone}
+                  </CustomText>
+                </View>
+              </>
             )}
             {step === 3 && (
-              <Text style={styles.subtitle}>PIN ۴ رقمی خود را وارد کنید</Text>
+              <View style={styles.numberBox}>
+                <CustomText style={styles.numberText}>
+                  {englishPhone}
+                </CustomText>
+              </View>
             )}
 
             {step === 1 && (
               <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>شماره موبایل</Text>
+                <CustomText style={styles.inputLabel}>شماره موبایل</CustomText>
                 <TextInput
                   style={styles.input}
                   keyboardType="phone-pad"
                   value={phone}
                   onChangeText={setPhone}
                   maxLength={11}
-                  textAlign="right"
                   placeholder="09123456789"
+                  placeholderTextColor="#999"
                   editable={!loading}
+                  textAlign="right"
                 />
               </View>
             )}
 
             {(step === 2 || step === 3) && (
               <View style={styles.codeContainer}>
-                <View style={styles.codeInputContainer}>
+                <View style={styles.pinInputContainer}>
                   {(step === 2 ? code : pin).map((digit, index) => (
                     <TextInput
                       key={index}
@@ -461,18 +473,33 @@ export default function LoginScreen() {
               </View>
             )}
 
-            {step === 3 && showPinLogin && (
-              <TouchableOpacity
-                style={styles.switchToOTPButton}
-                onPress={switchToOTPLogin}
-                disabled={loading}
-              >
-                <Text style={styles.switchToOTPText}>ورود با کد پیامکی</Text>
-              </TouchableOpacity>
+            {step === 2 && (
+              <View>
+                <CustomText style={styles.backTextnewcodefirst}>
+                  پیامک را دریافت نکردید؟
+                </CustomText>
+
+                <View style={styles.newcode}>
+                  <CustomText style={styles.backTextnewcodefirst}>
+                    یا اسپم خود را بررسی کنید
+                  </CustomText>
+
+                  <TouchableOpacity
+                    onPress={() => setStep(1)}
+                    disabled={loading}
+                  >
+                    <CustomText
+                      style={[styles.backTextnewcode, styles.linkText]}
+                    >
+                      کد جدید دریافت کنید
+                    </CustomText>
+                  </TouchableOpacity>
+                </View>
+              </View>
             )}
 
             <TouchableOpacity
-              style={[styles.mainButton]}
+              style={styles.mainButton}
               onPress={
                 step === 1
                   ? () => handlePhoneSubmit(false)
@@ -485,21 +512,43 @@ export default function LoginScreen() {
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.buttonText}>
+                <CustomText style={styles.buttonText}>
                   {step === 1 ? "ادامه" : step === 2 ? "تایید کد" : "ورود"}
-                </Text>
+                </CustomText>
               )}
             </TouchableOpacity>
 
-            {step === 2 && (
-              <TouchableOpacity onPress={() => setStep(1)} disabled={loading}>
-                <Text style={styles.backTextnewcode}>تصحیح شماره</Text>
+            {/* Toggle buttons for login methods */}
+            {step === 2 && pinEnabled && (
+              <TouchableOpacity
+                style={styles.methodToggleButton}
+                onPress={() => {
+                  setStep(3);
+                  setShowPinLogin(true);
+                }}
+                disabled={loading}
+              >
+                <CustomText style={styles.methodToggleText}>
+                  ورود با پین
+                </CustomText>
+              </TouchableOpacity>
+            )}
+
+            {step === 3 && showPinLogin && (
+              <TouchableOpacity
+                style={styles.methodToggleButton}
+                onPress={switchToOTPLogin}
+                disabled={loading}
+              >
+                <CustomText style={styles.methodToggleText}>
+                  ورود با کد پیامکی
+                </CustomText>
               </TouchableOpacity>
             )}
 
             {step === 3 && !showPinLogin && (
               <TouchableOpacity onPress={() => setStep(1)} disabled={loading}>
-                <Text style={styles.backTextnewcode}>بازگشت</Text>
+                <CustomText style={styles.backTextnewcode}>بازگشت</CustomText>
               </TouchableOpacity>
             )}
           </View>
@@ -538,6 +587,20 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 20,
   },
+  numberBox: {
+    backgroundColor: "#EDF1F2",
+    borderRadius: 10,
+    paddingVertical: 7,
+    width: "100%",
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  numberText: {
+    color: "#000",
+    fontSize: 18,
+  },
   inputContainer: {
     marginBottom: 30,
     width: "100%",
@@ -554,14 +617,17 @@ const styles = StyleSheet.create({
     padding: 15,
     fontSize: 18,
     textAlign: "right",
+    fontFamily: "YekanBakh",
   },
   codeContainer: {
     marginBottom: 10,
     width: "100%",
+    alignItems: "center",
   },
-  codeInputContainer: {
+  pinInputContainer: {
     flexDirection: "row",
     justifyContent: "center",
+    alignItems: "center",
     gap: 10,
   },
   codeInput: {
@@ -572,6 +638,8 @@ const styles = StyleSheet.create({
     height: 55,
     fontSize: 24,
     textAlign: "center",
+    writingDirection: "ltr",
+    fontFamily: "YekanBakh",
   },
   pinInput: {
     borderWidth: 2,
@@ -581,6 +649,8 @@ const styles = StyleSheet.create({
     height: 65,
     fontSize: 28,
     textAlign: "center",
+    writingDirection: "ltr",
+    fontFamily: "YekanBakh",
   },
   confirmPinInput: {
     borderColor: "#FFA500",
@@ -598,7 +668,7 @@ const styles = StyleSheet.create({
     padding: 18,
     borderRadius: 12,
     alignItems: "center",
-    marginTop: 10,
+    marginTop: 18,
   },
   buttonText: {
     color: "#fff",
@@ -607,21 +677,15 @@ const styles = StyleSheet.create({
   },
   backTextnewcode: {
     color: "#168CA9",
+    fontFamily: "YekanBakh",
     fontSize: 16,
     textAlign: "center",
-    marginTop: 15,
   },
-  switchToOTPButton: {
-    marginTop: 10,
-    marginBottom: 10,
-    padding: 10,
-    alignItems: "center",
-  },
-  switchToOTPText: {
-    color: "#168CA9",
+  backTextnewcodefirst: {
+    color: "#666",
     fontSize: 16,
-    fontWeight: "500",
-    textDecorationLine: "underline",
+    textAlign: "center",
+    marginTop: 8,
   },
   buttonDisabled: {
     opacity: 0.5,
@@ -635,5 +699,26 @@ const styles = StyleSheet.create({
     color: "#168CA9",
     fontSize: 14,
     textDecorationLine: "underline",
+  },
+  methodToggleButton: {
+    marginBottom: 10,
+    padding: 10,
+    alignItems: "center",
+  },
+  methodToggleText: {
+    color: "#168CA9",
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  newcode: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 5,
+    flexWrap: "wrap",
+  },
+  linkText: {
+    fontWeight: "bold",
+    fontFamily: "YekanBakh",
   },
 });

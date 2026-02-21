@@ -33,7 +33,6 @@ export default async function generateQR(req: Request, res: Response, context: C
     
     const otpauthUrl = `otpauth://totp/${label}?secret=${rawSecret}&issuer=${issuer}&apiKey=${app.apiKey}`;
 
-    // ۴. تولید تصویر QR
     const qrCodeDataUrl = await QRCode.toDataURL(otpauthUrl);
 
     res.setHeader('Content-Type', 'text/html');

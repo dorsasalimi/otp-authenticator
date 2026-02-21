@@ -13,23 +13,20 @@ import * as SecureStore from 'expo-secure-store';
 import { useColorScheme } from "@/components/useColorScheme";
 
 export {
-  // Catch any errors thrown by the Layout component.
   ErrorBoundary,
 } from "expo-router";
 
 export const unstable_settings = {
-  // Ensure that reloading on `/modal` keeps a back button present.
   initialRouteName: "(tabs)",
 };
 
-// Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const segments = useSegments();
   const router = useRouter();
   const [loaded, error] = useFonts({
-    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
+    YekanBakh: require("../assets/fonts/YekanBakh-Regular.ttf"),
     ...FontAwesome.font,
   });
   useEffect(() => {
@@ -38,16 +35,13 @@ export default function RootLayout() {
       const inAuthGroup = segments[0] === "login";
 
       if (!userPhone && !inAuthGroup) {
-        // اگر لاگین نیست و در صفحه لاگین هم نیست، بفرستش لاگین
         router.replace("/login");
       } else if (userPhone && inAuthGroup) {
-        // اگر لاگین هست و می‌خواد بره لاگین، بفرستش خانه
         router.replace("/(tabs)");
       }
     };
     checkLogin();
   }, [segments]);
-  // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
     if (error) throw error;
   }, [error]);

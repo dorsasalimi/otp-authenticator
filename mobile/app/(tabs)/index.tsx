@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   StyleSheet,
-  Text,
   View,
   FlatList,
   TouchableOpacity,
@@ -20,20 +19,19 @@ import * as Clipboard from "expo-clipboard";
 import { useFocusEffect } from "@react-navigation/native";
 import { Buffer } from "buffer";
 import base32 from "hi-base32";
+import * as CryptoJS from "crypto-js";
 import sha1 from "js-sha1";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import CryptoJS from "crypto-js";
 import axios from "axios";
 import Constants from "expo-constants";
-import Svg, { Circle, Path, Defs, ClipPath } from "react-native-svg";
+import Svg, { Circle, Path } from "react-native-svg";
+import CustomText from "@/components/CustomText";
 
 global.Buffer = Buffer;
 
-const { width, height } = Dimensions.get("screen");
+const { width } = Dimensions.get("screen");
 
-// SAFE PLATFORM RESOLUTION
-// This prevents the bundler from failing on iOS
 let NavigationBar: any = null;
 if (Platform.OS === 'android') {
   try {
@@ -48,6 +46,7 @@ interface Account {
   secret: string;
   issuer: string;
   label: string;
+  apiKey?: string;
 }
 
 const APP_SECRET = Constants.expoConfig?.extra?.appSecret;
@@ -100,9 +99,7 @@ const TrashIcon = () => (
 const CircularProgressBar = ({
   size = 44,
   strokeWidth = 3,
-  seconds,
   color,
-  accountId
 }: {
   size: number;
   strokeWidth: number;
@@ -116,6 +113,9 @@ const CircularProgressBar = ({
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
+    let animation: Animated.CompositeAnimation | null = null;
+    let listenerId: string;
+
     const startAnimation = () => {
       const now = Date.now();
       const msInCurrentCycle = now % 30000;
@@ -124,12 +124,14 @@ const CircularProgressBar = ({
 
       animatedValue.setValue(initialProgress);
 
-      Animated.timing(animatedValue, {
+      animation = Animated.timing(animatedValue, {
         toValue: 1,
         duration: remainingTime,
         easing: Easing.linear,
         useNativeDriver: false,
-      }).start(({ finished }) => {
+      });
+
+      animation.start(({ finished }) => {
         if (finished) {
           animatedValue.setValue(0);
           startAnimation();
@@ -139,17 +141,18 @@ const CircularProgressBar = ({
 
     startAnimation();
 
-    const listenerId = animatedValue.addListener(({ value }) => {
+    listenerId = animatedValue.addListener(({ value }) => {
       setProgress(value);
     });
 
     return () => {
-      animatedValue.stopAnimation();
+      if (animation) {
+        animation.stop();
+      }
       animatedValue.removeListener(listenerId);
     };
   }, []);
 
-  // Calculate the pie slice path
   const getPiePath = () => {
     const anglePercent = 1 - progress;
     if (anglePercent <= 0) {
@@ -172,7 +175,6 @@ const CircularProgressBar = ({
   return (
     <View style={{ width: size, height: size }}>
       <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        {/* Background circle - outline only */}
         <Circle
           cx={center}
           cy={center}
@@ -181,7 +183,6 @@ const CircularProgressBar = ({
           strokeWidth={strokeWidth}
           fill="none"
         />
-        {/* Progress pie slice - filled with color */}
         <Path
           d={getPiePath()}
           fill={color}
@@ -191,7 +192,8 @@ const CircularProgressBar = ({
     </View>
   );
 };
-export default function HomeScreen({ navigation }: any) {
+
+export default function HomeScreen() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [codes, setCodes] = useState<{ [key: string]: string }>({});
   const [timeProgress, setTimeProgress] = useState<{ [key: string]: number }>({});
@@ -200,32 +202,23 @@ export default function HomeScreen({ navigation }: any) {
   const router = useRouter();
   const [accountToDelete, setAccountToDelete] = useState<{ id: string; issuer: string } | null>(null);
   const [confirmText, setConfirmText] = useState("");
-  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showExitToast, setShowExitToast] = useState(false);
 
-  // Back handler refs
   const backPressCount = useRef(0);
   const backPressTimer = useRef<NodeJS.Timeout | null>(null);
 
-  // Android back button handler
   useEffect(() => {
     const backAction = () => {
-      // Check if we can go back in the navigation stack
       if (router.canGoBack()) {
-        // Single back press - go to previous screen
         router.back();
         return true;
       } else {
-        // At root - handle double press to exit
         if (backPressCount.current === 0) {
-          // First press
           backPressCount.current = 1;
 
-          // Show toast message
           setShowExitToast(true);
           setTimeout(() => setShowExitToast(false), 1500);
 
-          // Reset after 2 seconds
           backPressTimer.current = setTimeout(() => {
             backPressCount.current = 0;
             backPressTimer.current = null;
@@ -233,14 +226,12 @@ export default function HomeScreen({ navigation }: any) {
 
           return true;
         } else {
-          // Second press within 2 seconds - exit app
           if (backPressTimer.current) {
             clearTimeout(backPressTimer.current);
             backPressTimer.current = null;
           }
           backPressCount.current = 0;
 
-          // Exit the app
           BackHandler.exitApp();
           return true;
         }
@@ -268,7 +259,7 @@ export default function HomeScreen({ navigation }: any) {
 
   const confirmDelete = async () => {
     if (confirmText.toLowerCase() === "confirm" && accountToDelete) {
-      const targetAccount = accounts.find((acc) => acc.id === accountToDelete.id) as any;
+      const targetAccount = accounts.find((acc) => acc.id === accountToDelete.id);
       try {
         if (targetAccount?.apiKey) {
           const phone = await SecureStore.getItemAsync("user_phone");
@@ -305,11 +296,16 @@ export default function HomeScreen({ navigation }: any) {
         buf[i] = Number(tmpCounter & BigInt(0xff));
         tmpCounter = tmpCounter >> BigInt(8);
       }
-      const hmac = sha1.hmac.array(key, buf);
+      const hmac = (sha1 as any).hmac(key, buf);
       const offset = hmac[hmac.length - 1] & 0xf;
-      const code = (((hmac[offset] & 0x7f) << 24) | ((hmac[offset + 1] & 0xff) << 16) | ((hmac[offset + 2] & 0xff) << 8) | (hmac[offset + 3] & 0xff)) % 1000000;
+      const code = (((hmac[offset] & 0x7f) << 24) | 
+                    ((hmac[offset + 1] & 0xff) << 16) | 
+                    ((hmac[offset + 2] & 0xff) << 8) | 
+                    (hmac[offset + 3] & 0xff)) % 1000000;
       return code.toString().padStart(6, "0");
-    } catch (e) { return "000000"; }
+    } catch (e) { 
+      return "000000"; 
+    }
   };
 
   useFocusEffect(
@@ -345,8 +341,6 @@ export default function HomeScreen({ navigation }: any) {
 
   const copyToClipboard = async (code: string, id: string) => {
     await Clipboard.setStringAsync(code);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 1500);
     Alert.alert("کپی شد", "کد تایید در کلیپ‌بورد ذخیره شد.");
   };
 
@@ -380,11 +374,11 @@ export default function HomeScreen({ navigation }: any) {
         <View style={styles.accountInfo}>
           <View style={styles.cardHeader}>
             <View style={styles.iconCircle}>
-              <Text style={styles.iconLetter}>{item.issuer.charAt(0).toUpperCase()}</Text>
+              <CustomText style={styles.iconLetter}>{item.issuer.charAt(0).toUpperCase()}</CustomText>
             </View>
             <View style={styles.accountTextContainer}>
-              <Text style={styles.issuer}>{item.issuer}</Text>
-              <Text style={styles.label}>{item.label}</Text>
+              <CustomText style={styles.issuer}>{item.issuer}</CustomText>
+              <CustomText style={styles.label}>{item.label}</CustomText>
             </View>
             <View style={styles.timerContainer}>
               <CircularProgressBar
@@ -413,7 +407,7 @@ export default function HomeScreen({ navigation }: any) {
                       index === 3 && { marginLeft: 10 }
                     ]}
                   >
-                    <Text style={styles.otpDigit}>{digit}</Text>
+                    <CustomText style={styles.otpDigit}>{digit}</CustomText>
                   </View>
                 ))}
               </View>
@@ -434,7 +428,6 @@ export default function HomeScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      {/* Status Bar */}
       <StatusBar style="light" hidden={false} />
 
       <View style={styles.header}>
@@ -442,7 +435,7 @@ export default function HomeScreen({ navigation }: any) {
           <Ionicons name="log-out-outline" size={26} color="#FF3B30" />
         </TouchableOpacity>
         <View style={styles.titleContainer}>
-          <Text style={styles.title}>خانه</Text>
+          <CustomText style={styles.title}>خانه</CustomText>
         </View>
         <TouchableOpacity onPress={() => {}}>
           <MenuIcon />
@@ -458,7 +451,7 @@ export default function HomeScreen({ navigation }: any) {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="shield-checkmark-outline" size={80} color="#D1D1D6" />
-            <Text style={styles.emptyText}>هنوز سرویسی اضافه نکرده‌اید</Text>
+            <CustomText style={styles.emptyText}>هنوز سرویسی اضافه نکرده‌اید</CustomText>
           </View>
         }
       />
@@ -469,8 +462,8 @@ export default function HomeScreen({ navigation }: any) {
             <View style={styles.warningIcon}>
               <Ionicons name="alert-circle" size={40} color="#FF3B30" />
             </View>
-            <Text style={styles.modalTitle}>حذف سرویس {accountToDelete?.issuer}</Text>
-            <Text style={styles.modalSub}>برای تایید عبارت "confirm" را وارد کنید.</Text>
+            <CustomText style={styles.modalTitle}>حذف سرویس {accountToDelete?.issuer}</CustomText>
+            <CustomText style={styles.modalSub}>برای تایید عبارت "confirm" را وارد کنید.</CustomText>
             <TextInput
               style={styles.modalInput}
               placeholder="confirm"
@@ -480,24 +473,23 @@ export default function HomeScreen({ navigation }: any) {
             />
             <View style={styles.modalButtons}>
               <TouchableOpacity style={styles.btnDelete} onPress={confirmDelete}>
-                <Text style={styles.btnDeleteText}>حذف دائمی</Text>
+                <CustomText style={styles.btnDeleteText}>حذف دائمی</CustomText>
               </TouchableOpacity>
               <TouchableOpacity style={styles.btnCancel} onPress={() => setModalVisible(false)}>
-                <Text style={styles.btnCancelText}>انصراف</Text>
+                <CustomText style={styles.btnCancelText}>انصراف</CustomText>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
 
-      {/* Exit Toast */}
       {showExitToast && (
         <View style={styles.exitToast}>
-          <Text style={styles.exitToastText}>برای خروج دوباره کلیک کنید</Text>
+          <CustomText style={styles.exitToastText}>برای خروج دوباره کلیک کنید</CustomText>
         </View>
       )}
 
-      <TouchableOpacity style={styles.fab} onPress={() => router.push("ScannerScreen")}>
+      <TouchableOpacity style={styles.fab} onPress={() => router.push("/ScannerScreen" as any)}>
         <Ionicons name="add" size={32} color="white" />
       </TouchableOpacity>
     </View>
@@ -508,8 +500,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#75C3D7",
-    width: width,
-    height: height,
   },
   header: {
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
@@ -545,23 +535,15 @@ const styles = StyleSheet.create({
   label: { fontSize: 13, color: "#8E8E93", marginTop: 2 },
   codeContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   codeAndTimer: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  code: {
-    fontSize: 34,
-    fontWeight: "700",
-    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
-    letterSpacing: 4,
-    flex: 1,
-  },
   timerContainer: { marginLeft: 12 },
-  circularProgressTextContainer: { justifyContent: 'center', alignItems: 'center' },
   fab: {
     position: "absolute",
     right: 24,
     bottom: 34,
     width: 60,
     height: 60,
-    borderRadius: 20,
-    backgroundColor: "#007AFF",
+    borderRadius: 10,
+    backgroundColor: "#1B7ACE",
     justifyContent: "center",
     alignItems: "center",
     elevation: 8,
@@ -607,12 +589,13 @@ const styles = StyleSheet.create({
   btnCancel: { padding: 16, alignItems: "center" },
   btnCancelText: { color: "#8E8E93" },
   emptyContainer: { alignItems: "center", marginTop: 100 },
-  emptyText: { color: "#AEAEB2", marginTop: 15 },
+  emptyText: { color: "#636366", marginTop: 15 },
   trashButton: { padding: 8, marginLeft: 8 },
   otpContainer: {
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
+    flexWrap: "wrap",
   },
   otpDigitBox: {
     width: 35,

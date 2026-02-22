@@ -183,7 +183,7 @@ const verifyOTP = async () => {
         router.replace("/(tabs)");
       }
     } catch (error) {
-      Alert.alert("خطا", "PIN وارد شده اشتباه است.");
+      Alert.alert("خطا", "پین وارد شده اشتباه است.");
       setPin(["", "", "", ""]);
     } finally {
       setLoading(false);
@@ -233,7 +233,7 @@ const verifyOTP = async () => {
           setLoading(false);
         }
       } else {
-        Alert.alert("خطا", "PIN مطابقت ندارد. لطفاً دوباره تلاش کنید.");
+        Alert.alert("خطا", "پین مطابقت ندارد. لطفاً دوباره تلاش کنید.");
         setPinSetupStep("create");
         setSetupPin(["", "", "", ""]);
         setTempPin("");
@@ -294,8 +294,8 @@ const verifyOTP = async () => {
       <CustomText style={styles.title}>تنظیم PIN ورود سریع</CustomText>
       <CustomText style={styles.subtitle}>
         {pinSetupStep === "create"
-          ? "یک PIN ۴ رقمی انتخاب کنید"
-          : "PIN را دوباره وارد کنید"}
+          ? "یک پین ۴ رقمی انتخاب کنید"
+          : "پین را دوباره وارد کنید"}
       </CustomText>
 
       <View style={styles.codeContainer}>
@@ -303,7 +303,6 @@ const verifyOTP = async () => {
           style={styles.pinInputContainer}
           onLayout={() => I18nManager.forceRTL(false)}
         >
-          {" "}
           {setupPin.map((digit, index) => (
             <TextInput
               key={index}
@@ -382,7 +381,7 @@ const verifyOTP = async () => {
           <View style={styles.container}>
             <CustomText style={styles.title}>
               {step === 1
-                ? "ورود"
+                ? "ورود یا ایجاد حساب کاربری"
                 : step === 2
                   ? "ورود با پیامک"
                   : "پین را وارد کنید"}
@@ -513,12 +512,11 @@ const verifyOTP = async () => {
                 <ActivityIndicator color="#fff" />
               ) : (
                 <CustomText style={styles.buttonText}>
-                  {step === 1 ? "ادامه" : step === 2 ? "تایید کد" : "ورود"}
+                  {step === 1 ? "ادامه دهید" : step === 2 ? "تایید کد" : "ورود"}
                 </CustomText>
               )}
             </TouchableOpacity>
 
-            {/* Toggle buttons for login methods */}
             {step === 2 && pinEnabled && (
               <TouchableOpacity
                 style={styles.methodToggleButton}
@@ -567,7 +565,7 @@ const styles = StyleSheet.create({
   },
   container: {
     width: "100%",
-    height: "75%",
+    height: "70%",
     backgroundColor: "#fff",
     padding: 30,
     borderTopLeftRadius: 25,
@@ -575,8 +573,8 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   title: {
-    fontSize: 28,
-    fontWeight: "500",
+    fontSize: 25,
+    fontWeight: "800",
     textAlign: "center",
     color: "#000000",
     marginBottom: 20,
@@ -612,7 +610,7 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 2,
-    borderColor: "#75C3D7",
+    borderColor: "#168CA9",
     borderRadius: 10,
     padding: 15,
     fontSize: 18,
@@ -672,7 +670,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: "#fff",
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "bold",
   },
   backTextnewcode: {

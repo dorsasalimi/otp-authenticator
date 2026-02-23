@@ -28,7 +28,7 @@ Express API (Node.js)
         ↓
 Keystone 6 (GraphQL)
         ↓
-Database (SQLite / PostgreSQL)
+Database (PostgreSQL)
 ```
 
 ---
@@ -116,19 +116,10 @@ npm install
 Create a `.env` file inside the `backend` folder:
 
 ```
-PORT=3004
-JWT_SECRET=your_super_secret_key
+PORT=3000
+JWT_SECRET=your-secret
 DATABASE_URL=file:./keystone.db
 ```
-
-If using an SMS provider:
-
-```
-SMS_API_KEY=your_key
-SMS_API_SECRET=your_secret
-```
-
----
 
 ## 4️⃣ Run the Backend
 
@@ -228,7 +219,7 @@ Content-Type: application/json
 
 ---
 
-# 🛡 Security Considerations
+#  Security Considerations
 
 - PINs hashed using bcrypt
 - JWT signed with secret key
@@ -238,20 +229,7 @@ Content-Type: application/json
 
 ---
 
-# 🚀 Production Recommendations
-
-Before deploying:
-
-- Use PostgreSQL instead of SQLite
-- Enable HTTPS
-- Add rate limiting to OTP endpoint
-- Implement refresh tokens
-- Add monitoring & logging
-- Secure environment variables
-
----
-
-# ⭐ Project Purpose
+#  Project Purpose
 
 This project showcases:
 

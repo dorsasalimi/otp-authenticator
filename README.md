@@ -1,4 +1,4 @@
-# 🔐 OTP Authentication System
+#  OTP Authentication System
 
 A full-stack OTP-based authentication system built with Node.js, Express, KeystoneJS, and React Native (Expo).
 
@@ -6,7 +6,7 @@ This project demonstrates secure phone authentication using SMS OTP, optional 4-
 
 ---
 
-## ✨ Features
+##  Features
 
 - Phone number login
 - One-Time Password (OTP) verification
@@ -19,7 +19,7 @@ This project demonstrates secure phone authentication using SMS OTP, optional 4-
 
 ---
 
-## 🏗 Architecture
+##  Architecture
 
 ```
 Client (React Native)
@@ -87,8 +87,8 @@ OTP Authentication System
 ## 1️⃣ Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/otp-auth-project.git
-cd otp-auth-project
+git clone https://github.com/dorsasalimi/otp-authentication.git
+cd otp-authentication
 ```
 
 ---
@@ -105,7 +105,7 @@ npm install
 ### Frontend
 
 ```bash
-cd frontend
+cd mobile
 npm install
 ```
 
@@ -154,7 +154,7 @@ http://localhost:3004
 ## 5️⃣ Run the Frontend
 
 ```bash
-cd frontend
+cd mobile
 npx expo start
 ```
 
@@ -201,7 +201,7 @@ root/
 │   ├── keystone/
 │   └── server.ts
 │
-├── frontend/
+├── mobile/
 │   ├── app/
 │   ├── components/
 │   └── screens/
@@ -248,13 +248,6 @@ Before deploying:
 - Implement refresh tokens
 - Add monitoring & logging
 - Secure environment variables
-
----
-
-# 👩‍💻 Author
-
-**Dorsa Salimi**  
-Full Stack Developer
 
 ---
 

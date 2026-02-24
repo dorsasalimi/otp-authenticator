@@ -27,6 +27,7 @@ import axios from "axios";
 import Constants from "expo-constants";
 import Svg, { Circle, Path } from "react-native-svg";
 import CustomText from "@/components/CustomText";
+import MenuModal from "@/components/MenuModal";
 
 global.Buffer = Buffer;
 
@@ -199,10 +200,12 @@ export default function HomeScreen() {
   const [timeProgress, setTimeProgress] = useState<{ [key: string]: number }>({});
   const [timeDrift, setTimeDrift] = useState(0);
   const [modalVisible, setModalVisible] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
   const router = useRouter();
   const [accountToDelete, setAccountToDelete] = useState<{ id: string; issuer: string } | null>(null);
   const [confirmText, setConfirmText] = useState("");
   const [showExitToast, setShowExitToast] = useState(false);
+const [phoneNumber, setPhoneNumber] = useState<string>("");
 
   const backPressCount = useRef(0);
   const backPressTimer = useRef<NodeJS.Timeout | null>(null);
@@ -283,7 +286,33 @@ export default function HomeScreen() {
       }
     }
   };
+useEffect(() => {
+  const loadPhoneNumber = async () => {
+    try {
+      const phone = await SecureStore.getItemAsync("user_phone");
+      console.log("Loaded phone number:", phone);
+      if (phone) {
+        setPhoneNumber(phone);
+      }
+    } catch (error) {
+      console.error("Error loading phone number:", error);
+    }
+  };
+  
+  loadPhoneNumber();
+}, []);
 
+const handleMenuOpen = async () => {
+  try {
+    const phone = await SecureStore.getItemAsync("user_phone");
+    if (phone) {
+      setPhoneNumber(phone);
+    }
+  } catch (error) {
+    console.error("Error loading phone number:", error);
+  }
+  setMenuVisible(true);
+};
   const generateTOTP = (secret: string, drift: number = 0) => {
     try {
       const cleanSecret = secret.replace(/\s+/g, "").toUpperCase();
@@ -431,15 +460,12 @@ export default function HomeScreen() {
       <StatusBar style="light" hidden={false} />
 
       <View style={styles.header}>
-        <TouchableOpacity onPress={logout} hitSlop={10}>
-          <Ionicons name="log-out-outline" size={26} color="#FF3B30" />
-        </TouchableOpacity>
         <View style={styles.titleContainer}>
           <CustomText style={styles.title}>خانه</CustomText>
         </View>
-        <TouchableOpacity onPress={() => {}}>
-          <MenuIcon />
-        </TouchableOpacity>
+<TouchableOpacity onPress={handleMenuOpen}> 
+  <MenuIcon />
+</TouchableOpacity>
       </View>
 
       <FlatList
@@ -492,6 +518,13 @@ export default function HomeScreen() {
       <TouchableOpacity style={styles.fab} onPress={() => router.push("/ScannerScreen" as any)}>
         <Ionicons name="add" size={32} color="white" />
       </TouchableOpacity>
+
+      <MenuModal
+        visible={menuVisible}
+        onClose={() => setMenuVisible(false)}
+        onLogout={logout}
+        phoneNumber={phoneNumber}
+      />
     </View>
   );
 }

@@ -13,7 +13,7 @@ import {
 import { useRouter } from "expo-router";
 import axios from "axios";
 import * as SecureStore from "expo-secure-store";
-import CustomText from "@/components/CustomText"; 
+import CustomText from "@/components/CustomText";
 
 const API_URL = "http://192.168.100.59:3000/api";
 
@@ -123,49 +123,49 @@ export default function LoginScreen() {
     }
   };
 
-const verifyOTP = async () => {
-  const englishCode = code.map((digit) => toEnglishNumbers(digit)).join("");
+  const verifyOTP = async () => {
+    const englishCode = code.map((digit) => toEnglishNumbers(digit)).join("");
 
-  if (englishCode.length < 5) {
-    Alert.alert("خطا", "لطفاً کد تایید را کامل وارد کنید.");
-    return;
-  }
-
-  setLoading(true);
-
-  try {
-    const response = await axios.post(`${API_URL}/recovery`, {
-      phoneNumber: englishPhone,
-      code: englishCode,
-      action: "VERIFY_OTP_ONLY",
-    });
-
-    if (!response.data.success) {
-      Alert.alert("خطا", "کد وارد شده اشتباه است.");
+    if (englishCode.length < 5) {
+      Alert.alert("خطا", "لطفاً کد تایید را کامل وارد کنید.");
       return;
     }
 
-    setVerificationToken(response.data.token);
+    setLoading(true);
 
-    const userStatus = await axios.get(
-      `${API_URL}/pin/status/${englishPhone}`,
-    );
+    try {
+      const response = await axios.post(`${API_URL}/recovery`, {
+        phoneNumber: englishPhone,
+        code: englishCode,
+        action: "VERIFY_OTP_ONLY",
+      });
 
-    const userExists = userStatus.data?.data?.userExists;
-    const hasPin = userStatus.data?.data?.pinEnabled;
+      if (!response.data.success) {
+        Alert.alert("خطا", "کد وارد شده اشتباه است.");
+        return;
+      }
 
-    if (userExists) {
-      await SecureStore.setItemAsync("user_phone", englishPhone);
-      router.replace("/(tabs)");
-    } else {
-      setStep(4);
+      setVerificationToken(response.data.token);
+
+      const userStatus = await axios.get(
+        `${API_URL}/pin/status/${englishPhone}`,
+      );
+
+      const userExists = userStatus.data?.data?.userExists;
+      const hasPin = userStatus.data?.data?.pinEnabled;
+
+      if (userExists) {
+        await SecureStore.setItemAsync("user_phone", englishPhone);
+        router.replace("/(tabs)");
+      } else {
+        setStep(4);
+      }
+    } catch (error) {
+      Alert.alert("خطا", "کد وارد شده اشتباه است.");
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    Alert.alert("خطا", "کد وارد شده اشتباه است.");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const handlePINLogin = async () => {
     const englishPin = pin.map((digit) => toEnglishNumbers(digit)).join("");
@@ -473,7 +473,7 @@ const verifyOTP = async () => {
             )}
 
             {step === 2 && (
-              <View>
+              <View style={styles.linkcontainer}>
                 <CustomText style={styles.backTextnewcodefirst}>
                   پیامک را دریافت نکردید؟
                 </CustomText>
@@ -573,14 +573,14 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   title: {
-    fontSize: 25,
-    fontWeight: "800",
+    fontSize: 24,
     textAlign: "center",
     color: "#000000",
     marginBottom: 20,
+    fontFamily: "YekanBakh",
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 15,
     color: "#666",
     textAlign: "center",
     marginBottom: 20,
@@ -705,18 +705,17 @@ const styles = StyleSheet.create({
   },
   methodToggleText: {
     color: "#168CA9",
-    fontSize: 16,
-    fontWeight: "500",
+    fontSize: 13,
+    marginTop: 5,
   },
   newcode: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    gap: 5,
+    gap: 2,
     flexWrap: "wrap",
   },
-  linkText: {
-    fontWeight: "bold",
-    fontFamily: "YekanBakh",
-  },
+  linkcontainer: {
+fontSize: 10,
+  }
 });

@@ -269,7 +269,7 @@ type OtpUser {
   id: ID!
   phoneNumber: String
   isPhoneVerified: Boolean
-  pin: PasswordState
+  pin: String
   pinEnabled: Boolean
   pinLastChangedAt: DateTime
   tokens(where: OTPTokenWhereInput! = {}, orderBy: [OTPTokenOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: OTPTokenWhereUniqueInput): [OTPToken!]
@@ -291,6 +291,7 @@ input OtpUserWhereInput {
   id: IDFilter
   phoneNumber: StringFilter
   isPhoneVerified: BooleanFilter
+  pin: StringNullableFilter
   pinEnabled: BooleanFilter
   pinLastChangedAt: DateTimeNullableFilter
   tokens: OTPTokenManyRelationFilter
@@ -302,12 +303,6 @@ input OtpUserWhereInput {
 input BooleanFilter {
   equals: Boolean
   not: BooleanFilter
-}
-
-input OTPTokenManyRelationFilter {
-  every: OTPTokenWhereInput
-  some: OTPTokenWhereInput
-  none: OTPTokenWhereInput
 }
 
 input StringNullableFilter {
@@ -325,10 +320,17 @@ input StringNullableFilter {
   not: StringNullableFilter
 }
 
+input OTPTokenManyRelationFilter {
+  every: OTPTokenWhereInput
+  some: OTPTokenWhereInput
+  none: OTPTokenWhereInput
+}
+
 input OtpUserOrderByInput {
   id: OrderDirection
   phoneNumber: OrderDirection
   isPhoneVerified: OrderDirection
+  pin: OrderDirection
   pinEnabled: OrderDirection
   pinLastChangedAt: OrderDirection
   verificationCode: OrderDirection

@@ -1,13 +1,17 @@
 import { KeystoneContext } from "@keystone-6/core/types";
 import { Request, Response } from "express";
 import crypto from "crypto";
+import bcrypt from "bcryptjs";
 
-const verificationTokens = new Map<string, { phoneNumber: string, expires: number }>();
+const verificationTokens = new Map<
+  string,
+  { phoneNumber: string; expires: number }
+>();
 
 export const recoveryHandler = async (
   req: Request,
   res: Response,
-  context: KeystoneContext
+  context: KeystoneContext,
 ) => {
   try {
     const { phoneNumber, action, code, pin, verificationToken } = req.body;
@@ -28,7 +32,7 @@ export const recoveryHandler = async (
       });
 
       const verificationCode = Math.floor(
-        10000 + Math.random() * 90000
+        10000 + Math.random() * 90000,
       ).toString();
 
       const expireTime = new Date(Date.now() + 5 * 60 * 1000);
@@ -42,8 +46,8 @@ export const recoveryHandler = async (
           },
         });
       } else {
-
-        const tempOTPStore = (global as any).tempOTPStore = (global as any).tempOTPStore || new Map();
+        const tempOTPStore = ((global as any).tempOTPStore =
+          (global as any).tempOTPStore || new Map());
         tempOTPStore.set(phoneNumber, {
           code: verificationCode,
           expires: expireTime.getTime(),
@@ -59,7 +63,6 @@ export const recoveryHandler = async (
       });
     }
 
-
     if (action === "VERIFY_OTP_ONLY") {
       console.log("VERIFY_OTP_ONLY for:", phoneNumber);
 
@@ -71,7 +74,10 @@ export const recoveryHandler = async (
       let isValid = false;
 
       if (existingUser) {
-        if (!existingUser.verificationCode || existingUser.verificationCode !== code) {
+        if (
+          !existingUser.verificationCode ||
+          existingUser.verificationCode !== code
+        ) {
           return res.status(400).json({
             success: false,
             error: "کد اشتباه است",
@@ -117,14 +123,14 @@ export const recoveryHandler = async (
         }
 
         isValid = true;
-        
+
         tempOTPStore.delete(phoneNumber);
       }
 
       if (isValid) {
-        const token = crypto.randomBytes(32).toString('hex');
+        const token = crypto.randomBytes(32).toString("hex");
         const expires = Date.now() + 30 * 60 * 1000;
-        
+
         verificationTokens.set(token, {
           phoneNumber,
           expires,
@@ -149,7 +155,7 @@ export const recoveryHandler = async (
       }
 
       const tokenData = verificationTokens.get(verificationToken);
-      
+
       if (!tokenData || tokenData.phoneNumber !== phoneNumber) {
         return res.status(400).json({
           success: false,
@@ -176,12 +182,12 @@ export const recoveryHandler = async (
         where: { phoneNumber },
         query: `id`,
       });
-
+      const hashedPin = await bcrypt.hash(pin, 10);
       if (!user) {
         user = await context.query.OtpUser.createOne({
           data: {
             phoneNumber,
-            pin: pin,
+            pin: hashedPin,
             pinEnabled: true,
             isPhoneVerified: true,
             pinLastChangedAt: new Date().toISOString(),
@@ -194,7 +200,7 @@ export const recoveryHandler = async (
         await context.query.OtpUser.updateOne({
           where: { id: user.id },
           data: {
-            pin: pin,
+            pin: hashedPin,
             pinEnabled: true,
             pinLastChangedAt: new Date().toISOString(),
           },
@@ -275,7 +281,6 @@ export const recoveryHandler = async (
       success: false,
       error: "Action نامعتبر است",
     });
-
   } catch (error: any) {
     console.error("Recovery Handler Error:", error);
 

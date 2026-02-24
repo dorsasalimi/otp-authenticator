@@ -41,7 +41,7 @@ model OtpUser {
   id                        String            @id @default(uuid()) @postgresql.Uuid
   phoneNumber               String            @unique @default("")
   isPhoneVerified           Boolean           @default(false)
-  pin                       String
+  pin                       String?
   pinEnabled                Boolean           @default(false)
   pinLastChangedAt          DateTime?
   tokens                    OTPToken[]        @relation("OTPToken_user")

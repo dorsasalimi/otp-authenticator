@@ -105,16 +105,12 @@ export const lists = {
       }),
       isPhoneVerified: checkbox({ defaultValue: false }),
 
-      pin: password({
-        validation: {
-          isRequired: true,
-          length: { min: 4, max: 6 },
-        },
-        ui: {
-          description: "4-6 digit PIN for quick login",
-          createView: { fieldMode: "hidden" },
-        },
-      }),
+   pin: text({
+  db: { isNullable: true },
+  validation: {
+    isRequired: false,
+  },
+}),
       pinEnabled: checkbox({
         defaultValue: false,
         ui: {

@@ -19,20 +19,16 @@ export default function RootLayout() {
     >
       <Stack.Screen 
         name="index" 
-        options={{ 
-          headerShown: false 
-        }} 
+        options={{ headerShown: false }} 
       />
+
       <Stack.Screen 
         name="ScannerScreen" 
         options={{ 
           headerShown: true,
           headerTitle: () => <CustomHeaderTitle>اسکن QR</CustomHeaderTitle>,
           headerTitleAlign: "center",
-          headerStyle: {
-            backgroundColor: "#75C3D7",
-          },
-          headerTintColor: "#fff",
+          headerTintColor: "#000",
           headerBackVisible: true,
           headerBackTitle: "بازگشت",
           headerBackTitleStyle: {
@@ -40,13 +36,30 @@ export default function RootLayout() {
           },
         }}
       />
+
+      <Stack.Screen 
+        name="about-us" 
+        options={{ 
+          headerShown: true,
+          headerTitle: () => <CustomHeaderTitle>درباره ما</CustomHeaderTitle>,
+          headerTitleAlign: "center",
+          
+          headerTintColor: "#000",
+          headerBackVisible: true,
+          headerBackTitle: "بازگشت",
+          headerBackTitleStyle: {
+            fontFamily: 'YekanBakh',
+          },
+        }}
+      />
+
     </Stack>
   );
 }
 
 const styles = StyleSheet.create({
   headerTitle: {
-    color: '#fff',
+    color: '#000',
     fontSize: 20,
     fontWeight: '600',
   },

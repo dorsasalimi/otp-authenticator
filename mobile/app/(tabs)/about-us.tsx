@@ -62,18 +62,6 @@ const AboutUs = () => {
   return (
     <View style={styles.container}>
       <StatusBar style="dark" />
-      
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton} 
-          onPress={() => router.back()}
-        >
-          <Ionicons name="arrow-forward" size={24} color="#333" />
-        </TouchableOpacity>
-        <CustomText style={styles.headerTitle}>درباره ما</CustomText>
-        <View style={styles.placeholder} />
-      </View>
-
       <ScrollView 
         style={styles.content}
         showsVerticalScrollIndicator={false}

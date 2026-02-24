@@ -459,14 +459,17 @@ const handleMenuOpen = async () => {
     <View style={styles.container}>
       <StatusBar style="light" hidden={false} />
 
-      <View style={styles.header}>
-        <View style={styles.titleContainer}>
-          <CustomText style={styles.title}>خانه</CustomText>
-        </View>
-<TouchableOpacity onPress={handleMenuOpen}> 
-  <MenuIcon />
-</TouchableOpacity>
-      </View>
+<View style={styles.header}>
+  <TouchableOpacity onPress={handleMenuOpen} style={styles.headerSide}>
+    <MenuIcon />
+  </TouchableOpacity>
+
+  <View style={styles.headerTitleContainer}>
+    <CustomText style={styles.title}>خانه</CustomText>
+  </View>
+
+  <View style={styles.headerSide} />
+</View>
 
       <FlatList
         data={accounts}
@@ -534,16 +537,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#75C3D7",
   },
-  header: {
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingBottom: 10,
-    flexDirection: "row-reverse",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-  },
+ header: {
+  paddingTop: Platform.OS === "ios" ? 70 : 40,
+  paddingBottom: 10,
+  flexDirection: "row",
+  alignItems: "center",
+  paddingHorizontal: 20,
+},
+headerSide: {
+  width: 40,
+  alignItems: "center",
+  justifyContent: "center",
+},
+
+headerTitleContainer: {
+  flex: 1,
+  alignItems: "center",
+},
   titleContainer: { alignItems: 'center' },
-  title: { fontSize: 25, fontWeight: "500", color: "#ffffff" },
+  title: { fontSize: 23, fontWeight: "500", color: "#ffffff" },
   list: { padding: 20, paddingBottom: 100 },
   card: {
     backgroundColor: "white",

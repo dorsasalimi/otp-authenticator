@@ -1,4 +1,3 @@
-// sync.ts
 import { Request, Response } from 'express';
 import { Context } from '.keystone/types';
 const { authenticator } = require('otplib');

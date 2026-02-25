@@ -18,7 +18,7 @@ interface PinRequest {
 }
 
 const MAX_FAILED_ATTEMPTS = 5;
-const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
+const LOCKOUT_DURATION = 15 * 60 * 1000;
 
 const failedAttempts = new Map<string, { count: number; lockUntil?: number }>();
 
@@ -60,7 +60,6 @@ export const pinHandler = async (
     const clientIp = req.ip || req.socket.remoteAddress || "";
     const rateLimitKey = `${clientIp}_${phoneNumber}`;
 
-    // Rate limiting for verify action
     if (action === "verify" && !checkRateLimit(rateLimitKey)) {
       return res.status(429).json({
         error: "Too many failed attempts. Please try again after 15 minutes.",
@@ -71,7 +70,6 @@ export const pinHandler = async (
       return res.status(400).json({ error: "Phone number is required" });
     }
 
-    // Find user
     const users = await context.query.OtpUser.findMany({
       where: {
         phoneNumber: { equals: phoneNumber },
@@ -96,7 +94,6 @@ export const pinHandler = async (
     
     const user = users[0];
 
-    // Check phone verification for PIN management
     if (
       !user.isPhoneVerified &&
       ["set", "change", "disable"].includes(action)
@@ -131,7 +128,6 @@ export const pinHandler = async (
           });
         }
 
-        // Hash the PIN before storing
         const hashedPin = await bcrypt.hash(pin, 10);
 
         await context.query.OtpUser.updateOne({
@@ -148,7 +144,6 @@ export const pinHandler = async (
             action: "PIN_SET",
             ipAddress: clientIp,
             userAgent: req.headers["user-agent"] || "",
-            // Removed userId field
           },
         });
 
@@ -177,7 +172,6 @@ export const pinHandler = async (
         }
 
         try {
-          // Get the user with PIN from database using sudo for full access
           const userWithPin = await context.sudo().db.OtpUser.findOne({
             where: { id: user.id },
           });
@@ -188,15 +182,12 @@ export const pinHandler = async (
             });
           }
 
-          // Debug logging (remove in production)
           console.log("Verifying old PIN...");
           
-          // Verify old PIN
           const isOldPinValid = await bcrypt.compare(oldPin, userWithPin.pin);
           console.log("Old PIN valid:", isOldPinValid);
 
           if (!isOldPinValid) {
-            // Add artificial delay to prevent brute force
             await new Promise((resolve) => setTimeout(resolve, 1000));
 
             await context.query.AccessLog.createOne({
@@ -204,7 +195,6 @@ export const pinHandler = async (
                 action: "PIN_CHANGE_FAILED",
                 ipAddress: clientIp,
                 userAgent: req.headers["user-agent"] || "",
-                // Removed userId field
               },
             });
 
@@ -213,10 +203,8 @@ export const pinHandler = async (
             });
           }
 
-          // Hash the new PIN
           const hashedNewPin = await bcrypt.hash(pin, 10);
 
-          // Update with new PIN
           await context.query.OtpUser.updateOne({
             where: { id: user.id },
             data: {
@@ -230,7 +218,6 @@ export const pinHandler = async (
               action: "PIN_CHANGED",
               ipAddress: clientIp,
               userAgent: req.headers["user-agent"] || "",
-              // Removed userId field
             },
           });
 
@@ -265,7 +252,6 @@ export const pinHandler = async (
             action: "PIN_DISABLED",
             ipAddress: clientIp,
             userAgent: req.headers["user-agent"] || "",
-            // Removed userId field
           },
         });
 
@@ -288,7 +274,6 @@ export const pinHandler = async (
         }
 
         try {
-          // Get the user with PIN from database
           const userWithPin = await context.sudo().db.OtpUser.findOne({
             where: { id: user.id },
           });
@@ -299,7 +284,6 @@ export const pinHandler = async (
             });
           }
 
-          // Debug logging (remove in production)
           console.log("Verifying PIN for login...");
           console.log("Input PIN:", pin);
           
@@ -309,7 +293,6 @@ export const pinHandler = async (
           if (!isValid) {
             recordFailedAttempt(rateLimitKey);
 
-            // Add artificial delay to prevent brute force
             await new Promise((resolve) => setTimeout(resolve, 2000));
 
             await context.query.AccessLog.createOne({
@@ -317,7 +300,6 @@ export const pinHandler = async (
                 action: "PIN_VERIFY_FAILED",
                 ipAddress: clientIp,
                 userAgent: req.headers["user-agent"] || "",
-                // Removed userId field
               },
             });
 
@@ -334,7 +316,6 @@ export const pinHandler = async (
               action: "PIN_VERIFY_SUCCESS",
               ipAddress: clientIp,
               userAgent: req.headers["user-agent"] || "",
-              // Removed userId field
             },
           });
 

@@ -479,8 +479,7 @@ const handleMenuOpen = async () => {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons name="shield-checkmark-outline" size={80} color="#D1D1D6" />
-            <CustomText style={styles.emptyText}>هنوز سرویسی اضافه نکرده‌اید</CustomText>
+            <CustomText style={styles.emptyText}>هنوز سرویسی فعال نکردید</CustomText>
           </View>
         }
       />

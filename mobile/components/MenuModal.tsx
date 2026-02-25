@@ -201,7 +201,7 @@ const MenuModal: React.FC<MenuModalProps> = ({
     },
     {
       icon: (color: string) => <ChatIcon color={color} />,
-      label: "به روز رسانی برنامه",
+      label: "بروزرسانی برنامه",
       version: "نسخه 2.1.0",
       onPress: () => {
         handleClose();

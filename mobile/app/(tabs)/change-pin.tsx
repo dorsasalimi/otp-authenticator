@@ -55,7 +55,6 @@ export default function ChangePinScreen() {
   }, []);
 
   useEffect(() => {
-    // Clear sensitive data when component unmounts
     return () => {
       setCurrentPin(["", "", "", ""]);
       setNewPin(["", "", "", ""]);
@@ -65,7 +64,6 @@ export default function ChangePinScreen() {
   }, []);
 
   useEffect(() => {
-    // Focus first input when step changes
     setTimeout(() => {
       if (step === "current" && currentPinRefs.current[0]) {
         currentPinRefs.current[0].focus();
@@ -154,11 +152,10 @@ export default function ChangePinScreen() {
         action: "verify",
       });
 
-      if (response.data.authenticated) {
-        // Store the verified PIN before clearing
+      if (response?.data?.authenticated === true) {
         setVerifiedCurrentPin(englishPin);
         setStep("new");
-        setCurrentPin(["", "", "", ""]); // Clear for security
+        setCurrentPin(["", "", "", ""]);
       }
     } catch (error: any) {
       console.error("PIN verification error:", error.response?.data || error);
@@ -168,7 +165,6 @@ export default function ChangePinScreen() {
 
       Alert.alert("خطا", errorMessage);
       setCurrentPin(["", "", "", ""]);
-      // Focus on first input
       setTimeout(() => {
         currentPinRefs.current[0]?.focus();
       }, 100);
@@ -206,7 +202,6 @@ export default function ChangePinScreen() {
     if (englishNewPin !== englishConfirmPin) {
       Alert.alert("خطا", "پین جدید و تایید آن مطابقت ندارند.");
       setConfirmPin(["", "", "", ""]);
-      // Focus on first input of confirm
       setTimeout(() => {
         confirmPinRefs.current[0]?.focus();
       }, 100);
@@ -217,7 +212,7 @@ export default function ChangePinScreen() {
     try {
       const response = await axios.post(`${API_URL}/pin/change`, {
         phoneNumber,
-        oldPin: verifiedCurrentPin, // Use the stored verified PIN
+        oldPin: verifiedCurrentPin,
         pin: englishNewPin,
         action: "change",
       });
@@ -231,12 +226,18 @@ export default function ChangePinScreen() {
         ]);
       }
     } catch (error: any) {
-      console.error("Change PIN error:", error.response?.data || error);
-      const errorMessage =
-        error?.response?.data?.error ||
-        "تغییر پین ناموفق بود. لطفاً دوباره تلاش کنید.";
+      console.log("Change PIN error:", error);
 
-      Alert.alert("خطا", errorMessage); // Reset to current PIN step on failure
+      let errorMessage = "تغییر پین ناموفق بود. لطفاً دوباره تلاش کنید.";
+
+      if (axios.isAxiosError(error)) {
+        if (error.response?.data?.error) {
+          errorMessage = error.response.data.error;
+        } 
+      }
+
+      Alert.alert("خطا", errorMessage);
+
       setStep("current");
       setCurrentPin(["", "", "", ""]);
       setNewPin(["", "", "", ""]);
@@ -329,7 +330,7 @@ export default function ChangePinScreen() {
     if (step === "new") {
       setStep("current");
       setNewPin(["", "", "", ""]);
-      setVerifiedCurrentPin(""); // Clear stored PIN when going back
+      setVerifiedCurrentPin("");
     } else if (step === "confirm") {
       setStep("new");
       setConfirmPin(["", "", "", ""]);

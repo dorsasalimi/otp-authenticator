@@ -1,4 +1,3 @@
-// generate-qr.ts
 import { Request, Response } from 'express';
 import { Context } from '.keystone/types';
 import QRCode from 'qrcode';

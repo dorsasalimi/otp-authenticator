@@ -71,11 +71,18 @@ export default function LoginScreen() {
   const checkUserStatus = async () => {
     try {
       const savedPhone = await SecureStore.getItemAsync("user_phone");
-      if (savedPhone) {
-        setPhone(savedPhone);
+
+      if (!savedPhone) return;
+
+      const userStatus = await axios.get(`${API_URL}/pin/status/${savedPhone}`);
+
+      if (userStatus.data?.success) {
+        router.replace("/(tabs)");
+      } else {
+        await SecureStore.deleteItemAsync("user_phone");
       }
     } catch (error) {
-      console.log("Status check failed");
+      await SecureStore.deleteItemAsync("user_phone");
     }
   };
 
@@ -716,6 +723,6 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
   },
   linkcontainer: {
-fontSize: 10,
-  }
+    fontSize: 10,
+  },
 });

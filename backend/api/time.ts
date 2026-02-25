@@ -1,4 +1,3 @@
-// time.ts
 import { Request, Response } from 'express';
 
 export const serverTimeHandler = (req: Request, res: Response) => {
